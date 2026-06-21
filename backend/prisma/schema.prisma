@@ -1,0 +1,471 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(uuid())
+  name             String
+  email            String   @unique
+  phone            String   @unique
+  password         String
+  role             String   @default("tenant")
+  isVerified       Boolean  @default(false)
+  verificationStatus String @default("pending")
+  profilePhoto     String?
+  bio              String?
+  location         String?
+  occupation       String?
+  education        String?
+  interests        String[]
+  
+  // Homechef fields
+  isHomechef       Boolean  @default(false)
+  specialties      String[]
+  experience       String?
+  servingArea      String?
+  foods            String[]
+  schedule         String?
+  packages         String?  // JSON stored as string
+  foodPhotos       String[]
+  rating           Float    @default(0)
+  reviewsCount     Int      @default(0)
+  
+  // Settings
+  notificationSettings String?  // JSON: { messageNotifications, bookingNotifications, listingUpdates, promotionalNotifications }
+  privacySettings String?       // JSON: { profileVisibility, blockedUsers }
+  preferences     String?       // JSON: { language, locationPreference }
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  listings         Listing[]
+  savedListings    SavedListing[]
+  usedItems        UsedItem[]
+  savedUsedItems   SavedUsedItem[]
+  usedItemMessages UsedItemMessage[]
+  usedItemReports  UsedItemReport[]
+  reviewsGiven     Review[] @relation("Reviewer")
+  reviewsReceived  Review[] @relation("Reviewee")
+  notifications    Notification[]
+  priceAlerts      PriceAlert[]
+  bookingsAsTenant Booking[] @relation("TenantBookings")
+  bookingsAsChef   Booking[] @relation("ChefBookings")
+  
+  // Blood Donation
+  bloodRequests    BloodRequest[]
+  bloodDonorProfile BloodDonorProfile?
+  bloodNotifications BloodNotification[]
+}
+
+model Listing {
+  id               String        @id @default(uuid())
+  landlordId       String
+  title            String
+  description      String
+  rent             Int
+  priceValue       Int?
+  availableSeats   Int
+  location         String
+  photos           String[]
+  features         String[]       @default([])
+  rules            String[]       @default([])
+  genderPreference String?         
+  furnishing       String?         
+  availableFrom    DateTime?
+  status           String         @default("active")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  landlord User @relation(fields: [landlordId], references: [id])
+  savedBy SavedListing[]
+}
+
+model SavedListing {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+}
+
+model UsedItem {
+  id           String   @id @default(uuid())
+  title        String
+  description  String
+  price        Int
+  negotiable   Boolean  @default(false)
+  condition    String
+  category     String
+  subCategory  String?
+  location     String
+  contact      String
+  delivery     String
+  photos       String[]
+  isUrgent     Boolean  @default(false)
+  isSold       Boolean  @default(false)
+  bundle       String?
+  alertMessage String?
+  viewCount    Int      @default(0)
+  status       String   @default("active")
+  postedAt     DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  postedById String
+  postedBy   User        @relation(fields: [postedById], references: [id])
+  savedBy    SavedUsedItem[]
+  messages   UsedItemMessage[]
+  reports    UsedItemReport[]
+  priceAlerts PriceAlert[]
+  
+  @@index([postedById])
+  @@index([category])
+  @@index([condition])
+  @@index([postedAt])
+  @@index([isSold])
+  @@index([isUrgent])
+}
+
+model Booking {
+  id            String   @id @default(uuid())
+  tenantId      String
+  chefId        String
+  packageName   String
+  startDate     DateTime
+  preferredTime String
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant User @relation("TenantBookings", fields: [tenantId], references: [id])
+  chef   User @relation("ChefBookings", fields: [chefId], references: [id])
+
+  @@index([tenantId])
+  @@index([chefId])
+  @@index([startDate])
+}
+
+model SavedUsedItem {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  itemId    String
+  item      UsedItem @relation(fields: [itemId], references: [id])
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, itemId])
+  @@index([userId])
+  @@index([itemId])
+}
+
+model UsedItemMessage {
+  id          String   @id @default(uuid())
+  itemId      String
+  item        UsedItem @relation(fields: [itemId], references: [id])
+  senderId    String
+  sender      User     @relation(fields: [senderId], references: [id])
+  receiverId  String
+  message     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  @@index([itemId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+}
+
+model UsedItemReport {
+  id          String   @id @default(uuid())
+  itemId      String
+  item        UsedItem @relation(fields: [itemId], references: [id])
+  reporterId  String
+  reporter    User     @relation(fields: [reporterId], references: [id])
+  reason      String
+  description String?
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  
+  @@index([itemId])
+  @@index([reporterId])
+  @@index([status])
+}
+
+model Conversation {
+  id            String    @id @default(uuid())
+  user1Id       String
+  user2Id       String
+  lastMessage   String?
+  lastMessageAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+
+  messages Message[]
+  
+  @@index([user1Id, user2Id])
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  receiverId     String
+  content        String
+  type           String?
+  url            String?
+  filename       String?
+  isRead         Boolean  @default(false)
+  isDeleted      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  reviewerId  String
+  revieweeId  String
+  itemId      String?
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now())
+  
+  reviewer User @relation("Reviewer", fields: [reviewerId], references: [id])
+  reviewee User @relation("Reviewee", fields: [revieweeId], references: [id])
+  
+  @@index([reviewerId])
+  @@index([revieweeId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model PriceAlert {
+  id        String   @id @default(uuid())
+  userId    String
+  itemId    String
+  targetPrice Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  
+  user User     @relation(fields: [userId], references: [id])
+  item UsedItem @relation(fields: [itemId], references: [id])
+  
+  @@unique([userId, itemId])
+}
+
+model CommunityPost {
+  id        String   @id @default(uuid())
+  authorId  String
+  author    String
+  avatar    String?
+  title     String
+  content   String
+  likes     Int      @default(0)
+  comments  Int      @default(0)
+  pinned    Boolean  @default(false)
+  tag       String?
+  createdAt DateTime @default(now())
+
+  commentsList CommunityComment[] @relation("PostComments")
+  likedBy  CommunityPostLike[]
+
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model CommunityComment {
+  id        String   @id @default(uuid())
+  postId    String
+  authorId  String
+  author    String
+  avatar    String?
+  content   String
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  post     CommunityPost        @relation("PostComments", fields: [postId], references: [id])
+  likedBy  CommunityCommentLike[]
+
+  @@index([postId])
+}
+
+model CommunityPostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post CommunityPost @relation(fields: [postId], references: [id])
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model CommunityCommentLike {
+  id        String   @id @default(uuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment CommunityComment @relation(fields: [commentId], references: [id])
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+  @@index([userId])
+}
+
+model CommunityEvent {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  date        DateTime
+  location    String
+  organizer   String
+  organizerId String
+  attendees   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([organizerId])
+  @@index([date])
+}
+
+// ============ BLOOD REQUEST MODELS ============
+
+model BloodRequest {
+  id              String           @id @default(uuid())
+  requesterId     String
+  requester       User             @relation(fields: [requesterId], references: [id])
+  bloodGroup      String
+  unitsNeeded     Int
+  patientName     String?
+  hospitalName    String
+  hospitalAddress String
+  requiredDate    DateTime
+  emergencyLevel  EmergencyLevel   @default(urgent)
+  contactNumber   String
+  additionalNotes String?
+  location        String
+  lat             Float?
+  lng             Float?
+  status          RequestStatus    @default(active)
+  donorFound      Boolean          @default(false)
+  completedAt     DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  donorResponses  BloodDonorResponse[]
+  notifications   BloodNotification[]
+  views           Int              @default(0)
+
+  @@index([bloodGroup])
+  @@index([status])
+  @@index([emergencyLevel])
+  @@index([location])
+  @@index([expiresAt])
+}
+
+model BloodDonorProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  bloodGroup         String
+  lastDonationDate   DateTime?
+  weight             Float?
+  age                Int?
+  availabilityStatus Boolean  @default(true)
+  city               String?
+  area               String?
+  phoneVisible       Boolean  @default(true)
+  isVerified         Boolean  @default(false)
+  totalDonations     Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  responses BloodDonorResponse[]
+}
+
+model BloodDonorResponse {
+  id          String   @id @default(uuid())
+  requestId   String
+  request     BloodRequest @relation(fields: [requestId], references: [id])
+  donorId     String
+  donor       BloodDonorProfile @relation(fields: [donorId], references: [id])
+  status      ResponseStatus @default(interested)
+  message     String?
+  respondedAt DateTime @default(now())
+
+  @@unique([requestId, donorId])
+  @@index([requestId])
+  @@index([donorId])
+}
+
+model BloodNotification {
+  id          String   @id @default(uuid())
+  donorId     String
+  donor       User     @relation(fields: [donorId], references: [id])
+  requestId   String
+  request     BloodRequest @relation(fields: [requestId], references: [id])
+  sentAt      DateTime @default(now())
+  readAt      DateTime?
+  isRead      Boolean  @default(false)
+
+  @@index([donorId])
+  @@index([requestId])
+  @@index([sentAt])
+}
+
+// ============ ENUMS ============
+
+enum EmergencyLevel {
+  urgent
+  within_24_hours
+  planned
+}
+
+enum RequestStatus {
+  active
+  donor_found
+  completed
+  expired
+}
+
+enum ResponseStatus {
+  interested
+  unavailable
+}
+
+// Note: BloodGroup enum values are stored as strings in the database
+// Valid values: A+, A-, B+, B-, AB+, AB-, O+, O-
