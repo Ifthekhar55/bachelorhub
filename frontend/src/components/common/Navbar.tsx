@@ -199,7 +199,7 @@ const Navbar = () => {
             </div>
 
             {/* Right Section (visible on all sizes so profile shows on mobile) */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 flex-shrink-0">
               {/* Theme Toggle */}
               <Button
                 variant="ghost"
@@ -213,9 +213,9 @@ const Navbar = () => {
               {/* Language Toggle */}
               <Button
                 variant="ghost"
-                size="default"
+                size="icon"
                 onClick={toggleLanguage}
-                className="flex items-center space-x-1 rounded-full h-10 px-4"
+                className="flex items-center space-x-1 rounded-full h-10 px-4 w-auto"
               >
                 <Globe className="w-5 h-5" />
                 <span className="text-sm font-medium">{i18n.language === 'en' ? 'বাংলা' : 'English'}</span>
@@ -226,9 +226,10 @@ const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    className="relative p-0 hover:ring-2 hover:ring-green-500 rounded-full transition-all"
+                    size="icon"
+                    className="relative hover:ring-2 hover:ring-green-500 rounded-full transition-all h-auto w-auto p-0"
                   >
-                    <Avatar className="h-12 w-12 border-2 border-green-500 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+                    <Avatar className="h-10 w-10 border-2 border-green-500 shadow-md hover:shadow-lg transition-shadow cursor-pointer flex-shrink-0">
                       {isAuthenticated && hasProfilePhoto() ? (
                         <AvatarImage src={user?.profilePhoto} className="object-cover" />
                       ) : null}
