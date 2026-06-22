@@ -29,8 +29,9 @@ const Register = () => {
     try {
       await register(formData)
       sessionStorage.setItem('pendingEmail', formData.email)
+      localStorage.setItem('pendingEmail', formData.email)
       toast.success('Registration successful! Please verify your email.')
-      navigate('/verify-otp')
+      navigate(`/verify-otp?email=${encodeURIComponent(formData.email)}`)
     } catch (error: any) {
       const message = error?.response?.data?.error || 'Registration failed. Please try again.'
       toast.error(message)

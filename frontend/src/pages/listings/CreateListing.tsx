@@ -128,8 +128,6 @@ const CreateListing = () => {
         }
       }
 
-      const primaryImage = resizedUrls[0] ?? 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop'
-
       const payload = {
         title: formData.title,
         description: formData.description,
@@ -142,7 +140,7 @@ const CreateListing = () => {
         availableFrom: formData.availableFrom || undefined,
         features: formData.facilities.map((facilityId) => facilityMap[facilityId] || facilityId),
         rules: formData.rules,
-        photos: resizedUrls.length > 0 ? resizedUrls : [primaryImage],
+        photos: resizedUrls,
       }
 
       await api.post('/api/listings', payload)

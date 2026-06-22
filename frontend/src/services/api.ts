@@ -1,10 +1,10 @@
 // src/services/api.ts
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_URL || window.location.origin
+const baseURL = import.meta.env.VITE_API_URL || '/api'
 
-if (!import.meta.env.VITE_API_URL && window.location.hostname !== 'localhost') {
-  console.warn('VITE_API_URL is not set. Using current origin for API requests.')
+if (!import.meta.env.VITE_API_URL) {
+  console.warn('VITE_API_URL is not set. Using /api relative path for API requests. Make sure your backend is accessible from the same origin or set VITE_API_URL in production.')
 }
 
 const api = axios.create({
