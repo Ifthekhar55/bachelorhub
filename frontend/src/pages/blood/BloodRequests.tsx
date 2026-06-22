@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -202,26 +202,27 @@ const BloodRequests = () => {
     }
   };
 
+  const handleEdit = (e: MouseEvent<HTMLButtonElement>, request: BloodRequest) => {
+    e.stopPropagation();
+    setOpenMenuId(null);
+    navigate('/create-blood-request', { state: { request } });
+  };
+
+  const handleDelete = async (e: MouseEvent<HTMLButtonElement>, requestId: string) => {
+    e.stopPropagation();
+    setOpenMenuId(null);
+    if (!confirm('Are you sure you want to delete this request?')) return;
+    try {
+      await api.delete(`/api/blood/requests/${requestId}`);
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+      toast.success('Request deleted');
+    } catch (err) {
+      console.error('Failed to delete request', err);
+      toast.error('Failed to delete request');
+    }
+  };
+
   const handleShare = (request: BloodRequest) => {
-
-      const handleEdit = (e: React.MouseEvent, request: BloodRequest) => {
-        e.stopPropagation();
-        // Navigate to create page with state so the form can prefill (edit handling not implemented here)
-        navigate('/create-blood-request', { state: { request } });
-      };
-
-      const handleDelete = async (e: React.MouseEvent, requestId: string) => {
-        e.stopPropagation();
-        if (!confirm('Are you sure you want to delete this request?')) return;
-        try {
-          await api.delete(`/api/blood/requests/${requestId}`);
-          setRequests(prev => prev.filter(r => r.id !== requestId));
-          toast.success('Request deleted');
-        } catch (err) {
-          console.error('Failed to delete request', err);
-          toast.error('Failed to delete request');
-        }
-      };
     const text = `🚨 URGENT BLOOD NEEDED\nGroup: ${request.bloodGroup}\nHospital: ${request.hospitalName}\nLocation: ${request.location}\nContact: ${request.contactNumber}\n\nPlease help save a life!`;
     navigator.clipboard.writeText(text);
     toast.success('Request details copied to clipboard');
@@ -485,7 +486,7 @@ const BloodRequests = () => {
                             {request.status.toUpperCase()}
                           </Badge>
                           {request.requester.isVerified && (
-                            <Shield className="w-4 h-4 text-green-500" title="Verified Requester" />
+                            <Shield className="w-4 h-4 text-green-500" aria-label="Verified Requester" role="img" />
                           )}
                         </div>
 
