@@ -362,8 +362,9 @@ const Messenger = () => {
     clearCallTimeout()
     callTimerRef.current = window.setTimeout(() => {
       if (callStatusRef.current === 'in-call' || callStatusRef.current === 'idle') return
-      if (socket && selectedChatRoom) {
-        socket.emit('missed_call', { conversationId: selectedChatRoom, type: callType ?? 'audio' })
+      const conversationId = incomingOffer?.conversationId ?? selectedChatRoom
+      if (socket && conversationId) {
+        socket.emit('missed_call', { conversationId, type: callType ?? 'audio' })
       }
       toast.error(`Missed ${callType ?? 'call'}.`)
       cleanupCall()
@@ -703,7 +704,7 @@ const Messenger = () => {
       type: 'audio' | 'video'
       sdp: string
     }) => {
-      if (payload.conversationId !== selectedChatRoom || payload.callerId === user?.id) return
+      if (payload.callerId === user?.id) return
       if (callStatus === 'in-call' || callStatus === 'connecting') return
 
       setIncomingOffer(payload)
@@ -1179,7 +1180,7 @@ const Messenger = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold">
-                          {callStatus === 'incoming' && `${callPartner?.name ?? 'Caller'} is calling...`}
+                          {callStatus === 'incoming' && `Incoming ${callType === 'video' ? 'video' : 'audio'} call from ${callPartner?.name ?? 'Caller'}`}
                           {callStatus === 'ringing' && `Ringing ${callPartner?.name ?? 'contact'}...`}
                           {callStatus === 'calling' && `Calling ${callPartner?.name ?? 'contact'}...`}
                           {callStatus === 'connecting' && 'Connecting call...'}
@@ -1193,10 +1194,10 @@ const Messenger = () => {
                         {callStatus === 'incoming' ? (
                           <>
                             <Button onClick={acceptCall} className="bg-green-600 hover:bg-green-700">
-                              Accept
+                              Receive
                             </Button>
                             <Button onClick={rejectCall} className="bg-red-600 hover:bg-red-700">
-                              Reject
+                              Cancel
                             </Button>
                           </>
                         ) : (

@@ -378,6 +378,12 @@ io.on('connection', (socket) => {
   socket.on('offer', (payload: { conversationId: string; callerId: string; callerName: string; type: 'audio' | 'video'; sdp: string }) => {
     const room = `conversation_${payload.conversationId}`
     socket.to(room).emit('offer', payload)
+
+    const receiverId = getOtherParticipantId(payload.conversationId, payload.callerId)
+    if (receiverId) {
+      const userRoom = `user_${receiverId}`
+      io.to(userRoom).emit('offer', payload)
+    }
   })
 
   socket.on('answer', (payload: { conversationId: string; answer: string }) => {

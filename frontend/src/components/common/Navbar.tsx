@@ -24,6 +24,7 @@ import {
   ShoppingBag,
   Droplet
 } from 'lucide-react'
+import logo from '../../assets/Icon.png'
 import { useAuthStore } from '../../store/authStore'
 import { useNotificationStore } from '../../store/notificationStore'
 import api from '../../services/api'
@@ -171,9 +172,7 @@ const Navbar = () => {
 
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2 group">
-              <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">BH</span>
-              </div>
+              <img src={logo} alt="BachelorHub logo" className="w-10 h-10 rounded-lg" />
               <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                 BachelorHub
               </span>
