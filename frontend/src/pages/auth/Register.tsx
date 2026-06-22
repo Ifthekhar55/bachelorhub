@@ -27,13 +27,16 @@ const Register = () => {
       return
     }
     try {
-      await register(formData)
+      const result = await register(formData)
+      // Store email before navigation
       sessionStorage.setItem('pendingEmail', formData.email)
       toast.success('Registration successful! Please verify your email.')
+      // Navigate after storing email
       navigate('/verify-otp')
     } catch (error: any) {
       const message = error?.response?.data?.error || 'Registration failed. Please try again.'
       toast.error(message)
+      console.error('Registration error:', error)
     }
   }
 
@@ -171,3 +174,4 @@ const Register = () => {
 }
 
 export default Register
+

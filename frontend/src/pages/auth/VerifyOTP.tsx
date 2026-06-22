@@ -11,10 +11,15 @@ const VerifyOTP = () => {
   const { verifyOTP, resendOTP, isLoading } = useAuthStore()
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [resendTimer, setResendTimer] = useState(0)
-  const [email, setEmail] = useState(() => sessionStorage.getItem('pendingEmail') || '')
+  const [email, setEmail] = useState(() => {
+    const storedEmail = sessionStorage.getItem('pendingEmail')
+    console.log('Retrieved email from sessionStorage:', storedEmail)
+    return storedEmail || ''
+  })
+  const [isReady, setIsReady] = useState(false)
 
   const handleChange = (index: number, value: string) => {
-    if (value.length <= 1 && /^\d*$/.test(value)) {
+    if (value.length <= 1 && /^\\d*$/.test(value)) {
       const newOtp = [...otp]
       newOtp[index] = value
       setOtp(newOtp)
@@ -28,12 +33,19 @@ const VerifyOTP = () => {
   }
 
   useEffect(() => {
-    if (!email) {
+    const storedEmail = sessionStorage.getItem('pendingEmail')
+    console.log('VerifyOTP mounted. Email from sessionStorage:', storedEmail)
+    
+    if (!storedEmail) {
+      console.warn('No email found in sessionStorage, redirecting to register')
       toast.error('Missing email. Please register first.')
       navigate('/register')
       return
     }
-  }, [email, navigate])
+    
+    setEmail(storedEmail)
+    setIsReady(true)
+  }, [navigate])
 
   useEffect(() => {
     if (!resendTimer) return
@@ -54,6 +66,7 @@ const VerifyOTP = () => {
       if (!email) {
         throw new Error('Missing email')
       }
+      console.log('Verifying OTP for email:', email)
       await verifyOTP(email, otpCode)
       sessionStorage.removeItem('pendingEmail')
       toast.success('Email verified successfully!')
@@ -61,6 +74,7 @@ const VerifyOTP = () => {
     } catch (error: any) {
       const message = error?.response?.data?.error || 'Invalid OTP. Please try again.'
       toast.error(message)
+      console.error('OTP verification error:', error)
     }
   }
 
@@ -71,13 +85,26 @@ const VerifyOTP = () => {
     }
 
     try {
+      console.log('Resending OTP to email:', email)
       await resendOTP(email)
       setResendTimer(60)
       toast.success('OTP resent to your email')
     } catch (error: any) {
       const message = error?.response?.data?.error || 'Unable to resend OTP right now.'
       toast.error(message)
+      console.error('Resend OTP error:', error)
     }
+  }
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -93,7 +120,8 @@ const VerifyOTP = () => {
           </div>
           <h1 className="text-2xl font-bold">Verify Your Email Address</h1>
           <p className="text-gray-500 mt-2">
-            We've sent a 6-digit verification code to your email
+            We've sent a 6-digit verification code to <br />
+            <span className="font-semibold text-gray-700">{email}</span>
           </p>
         </div>
 
@@ -136,3 +164,4 @@ const VerifyOTP = () => {
 }
 
 export default VerifyOTP
+
