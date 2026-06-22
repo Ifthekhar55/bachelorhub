@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Search, Send, Phone, Video, MoreVertical, Smile, Paperclip, Image, Mic, Check, CheckCheck, MessageCircle, Copy, Trash2, ExternalLink, Download } from 'lucide-react'
+import { Search, Send, Phone, Video, MoreVertical, Smile, Paperclip, Image, Mic, Check, CheckCheck, MessageCircle, Copy, Trash2, ExternalLink, Download, ArrowLeft } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog'
@@ -74,6 +74,7 @@ const Messenger = () => {
   const [previewImage, setPreviewImage] = useState<{ url: string; filename?: string } | null>(null)
   const [actionMenuMessageId, setActionMenuMessageId] = useState<string | null>(null)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [showChatOnMobile, setShowChatOnMobile] = useState(false)
   const [editingText, setEditingText] = useState('')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
@@ -777,6 +778,7 @@ const Messenger = () => {
 
   const handleSelectChat = (conv: Conversation) => {
     setSelectedChatId(conv.id)
+    setShowChatOnMobile(true)
     updateConversation(conv.id, { unread: 0 })
 
     // Mark chat conversation messages as read on the backend
@@ -1077,10 +1079,10 @@ const Messenger = () => {
 
   return (
     <div className="h-[calc(100vh-4rem)] bg-gray-100">
-      <div className="container mx-auto h-full max-w-7xl">
-        <div className="flex h-full bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="mx-auto h-full w-full max-w-7xl px-0 md:px-4">
+        <div className="flex h-full bg-white rounded-none md:rounded-lg shadow-lg overflow-hidden">
           {/* Conversations Sidebar */}
-          <div className="w-80 border-r flex flex-col">
+          <div className={`flex flex-col ${showChatOnMobile ? 'hidden' : 'flex'} md:flex w-full md:w-80 border-b md:border-b-0 md:border-r`}>
             <div className="p-4 border-b">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -1133,10 +1135,18 @@ const Messenger = () => {
 
           {/* Chat Area */}
           {selectedChat ? (
-            <div className="flex-1 flex flex-col">
+            <div className={`flex-1 flex flex-col ${showChatOnMobile ? 'block' : 'hidden md:flex'}`}>
               {/* Chat Header */}
               <div className="p-4 border-b flex justify-between items-center">
                 <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="md:hidden p-2 rounded-full bg-gray-100 hover:bg-gray-200"
+                    onClick={() => setShowChatOnMobile(false)}
+                    aria-label="Back to conversations"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
                   <Avatar className="w-10 h-10">
                     {selectedChat.avatar ? (
                       <AvatarImage src={selectedChat.avatar} />

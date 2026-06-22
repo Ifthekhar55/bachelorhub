@@ -771,7 +771,7 @@ const Community = () => {
             {/* Create Post */}
             <Card className="p-4 mb-6">
               <div className="flex flex-col gap-3">
-                <div className="flex gap-3 items-start">
+                <div className="flex flex-col gap-3 md:flex-row items-start">
                   <Avatar className="w-10 h-10">
                     {user?.profilePhoto ? (
                       <AvatarImage src={user.profilePhoto} />
@@ -779,7 +779,7 @@ const Community = () => {
                       <AvatarFallback>U</AvatarFallback>
                     )}
                   </Avatar>
-                  <div className="flex-1 flex gap-3">
+                  <div className="flex-1 flex flex-col gap-3 md:flex-row">
                     <textarea
                       value={newPostText}
                       onChange={(e) => setNewPostText(e.target.value)}
@@ -787,7 +787,7 @@ const Community = () => {
                       placeholder="Share your experience or ask a question..."
                       className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"
                     />
-                    <div className="flex flex-col gap-2 min-w-[150px]">
+                    <div className="flex flex-col gap-2 w-full md:w-[190px]">
                       <label className="text-sm font-medium text-gray-700">Post Tag</label>
                       <select
                         value={selectedPostTag}

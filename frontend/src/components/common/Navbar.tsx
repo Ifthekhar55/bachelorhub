@@ -198,28 +198,30 @@ const Navbar = () => {
               ))}
             </div>
 
-            {/* Right Section (visible on all sizes so profile shows on mobile) */}
+            {/* Right Section (profile always visible, theme/language move to mobile menu) */}
             <div className="flex items-center space-x-3 flex-shrink-0">
-              {/* Theme Toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleTheme}
-                className="rounded-full w-10 h-10"
-              >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </Button>
+              <div className="hidden md:inline-flex">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleTheme}
+                  className="rounded-full w-10 h-10"
+                >
+                  {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </Button>
+              </div>
 
-              {/* Language Toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleLanguage}
-                className="flex items-center space-x-1 rounded-full h-10 px-4 w-auto"
-              >
-                <Globe className="w-5 h-5" />
-                <span className="text-sm font-medium">{i18n.language === 'en' ? 'বাংলা' : 'English'}</span>
-              </Button>
+              <div className="hidden md:inline-flex">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleLanguage}
+                  className="flex items-center space-x-1 rounded-full h-10 px-4 w-auto"
+                >
+                  <Globe className="w-5 h-5" />
+                  <span className="text-sm font-medium">{i18n.language === 'en' ? 'বাংলা' : 'English'}</span>
+                </Button>
+              </div>
 
               {/* Profile Dropdown */}
               <DropdownMenu>
@@ -433,20 +435,29 @@ const Navbar = () => {
                   </Link>
                 ))}
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-                  {isAuthenticated ? null : (
-                    <div className="space-y-2 mt-3">
-                      <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                        <Button className="w-full bg-gradient-to-r from-green-600 to-emerald-600 h-11">
-                          Login
-                        </Button>
-                      </Link>
-                      <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="outline" className="w-full h-11">
-                          Sign Up
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleTheme()
+                      setMobileMenuOpen(false)
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                    <span className="font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleLanguage()
+                      setMobileMenuOpen(false)
+                    }}
+                    className="w-full mt-2 flex items-center gap-3 px-3 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    <Globe className="w-5 h-5" />
+                    <span className="font-medium">{i18n.language === 'en' ? 'বাংলা' : 'English'}</span>
+                  </button>
                 </div>
               </div>
             </motion.div>
