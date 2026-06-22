@@ -30,6 +30,8 @@ const transporter = (smtpHost && smtpPort && smtpUser && smtpPass)
       port: smtpPort,
       secure: false,
       auth: { user: smtpUser, pass: smtpPass },
+      connectionTimeout: 10000,
+      socketTimeout: 10000,
     })
   : null;
 
@@ -42,17 +44,26 @@ const sendOtpMessage = async (email: string, otp: string) => {
   const text = `Your BachelorHub verification code is ${otp}. It expires in 5 minutes.`;
 
   if (transporter) {
-    await transporter.sendMail({
-      from: smtpUser,
-      to: email,
-      subject,
-      text,
-    });
-    return;
+    try {
+      await transporter.sendMail({
+        from: smtpUser,
+        to: email,
+        subject,
+        text,
+      });
+      console.log(`OTP email sent successfully to ${email}`);
+      return;
+    } catch (error) {
+      console.error(`Failed to send OTP email to ${email}:`, error);
+      // Don't throw - allow registration to proceed even if email fails
+      // Log the OTP for development/debugging
+      console.log(`[FALLBACK] OTP for ${email}: ${otp}`);
+      return;
+    }
   }
 
   // Fallback logging for development if SMTP is not configured
-  console.log(`OTP for ${email}: ${otp}`);
+  console.log(`[NO SMTP] OTP for ${email}: ${otp}`);
 };
 
 const queueOtpForEmail = async (email: string, userId: string) => {
@@ -61,7 +72,11 @@ const queueOtpForEmail = async (email: string, userId: string) => {
   const resendAvailableAt = new Date(Date.now() + RESEND_COOLDOWN_MS);
 
   otpStore.set(email, { otpCode, expiresAt, resendAvailableAt, userId });
-  await sendOtpMessage(email, otpCode);
+  
+  // Send email asynchronously - don't wait for it
+  sendOtpMessage(email, otpCode).catch(err => {
+    console.error('Async OTP send error:', err);
+  });
 
   return { otpCode, expiresAt, resendAvailableAt };
 };
@@ -99,6 +114,7 @@ router.post('/register', async (req, res) => {
       },
     });
 
+    // Queue OTP - this is now non-blocking
     await queueOtpForEmail(email, user.id);
 
     res.status(201).json({ message: 'User created, OTP sent', email: user.email });
@@ -224,8 +240,7 @@ router.post('/logout', async (req, res) => {
 
 // Protected route to get current authenticated user's info
 router.get('/me', authenticate, async (req, res) => {
-  try {
-    const userId = (req as any).user?.userId;
+  try {\n    const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const user = await prisma.user.findUnique({
@@ -257,3 +272,4 @@ router.get('/dev/otp/:email', (req, res) => {
 });
 
 export default router;
+
