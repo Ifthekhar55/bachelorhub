@@ -638,7 +638,6 @@ const Messenger = () => {
     if (remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = remoteStream
       remoteAudioRef.current.muted = false
-      remoteAudioRef.current.playsInline = true
       const playPromise = remoteAudioRef.current.play()
       if (playPromise !== undefined) {
         playPromise.catch((error) => {
