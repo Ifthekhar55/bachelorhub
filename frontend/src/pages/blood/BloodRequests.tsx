@@ -454,7 +454,7 @@ const BloodRequests = () => {
                     onClick={() => navigate(`/blood-request/${request.id}`)}
                   >
                     {user?.id === request.requester.id && (
-                      <div className="absolute top-4 left-1/2 z-20 -translate-x-1/2">
+                      <div className="absolute top-4 right-4 md:left-1/2 md:right-auto z-20 md:-translate-x-1/2">
                         <button
                           onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === request.id ? null : request.id); }}
                           className="p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"
@@ -595,7 +595,7 @@ const BloodRequests = () => {
                       onClick={() => navigate(`/blood-request/${request.id}`)}
                     >
                       {user?.id === request.requester.id && (
-                        <div className="absolute top-4 left-1/2 z-20 -translate-x-1/2">
+                        <div className="absolute top-4 right-4 md:left-1/2 md:right-auto z-20 md:-translate-x-1/2">
                           <button
                             onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === request.id ? null : request.id); }}
                             className="p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"
