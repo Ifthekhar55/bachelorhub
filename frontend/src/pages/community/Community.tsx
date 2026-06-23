@@ -35,7 +35,7 @@ interface Comment {
   id: number | string
   authorId: string
   author: string
-  avatar: string
+  avatar?: string
   content: string
   time: string
   likes?: number
@@ -46,7 +46,7 @@ interface Post {
   id: number | string
   authorId: string
   author: string
-  avatar: string
+  avatar?: string
   time: string
   title: string
   content: string
@@ -102,12 +102,10 @@ const Community = () => {
 
   const { user } = useAuthStore()
 
-  const DEFAULT_AVATAR = 'https://i.pravatar.cc/150?img=7'
-
   const resolveAvatar = (avatar: string | null | undefined, authorId?: string) => {
     if (avatar) return avatar
     if (authorId && authorId === user?.id && user?.profilePhoto) return user.profilePhoto
-    return DEFAULT_AVATAR
+    return undefined
   }
 
   const computedTrendingTopics = useMemo(() => {
@@ -897,10 +895,14 @@ const Community = () => {
 
                     <div className="flex items-start gap-3 mb-3 justify-between">
                       <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={post.avatar} />
-                          <AvatarFallback>{post.author[0]}</AvatarFallback>
-                        </Avatar>
+                        {post.avatar ? (
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={post.avatar} />
+                            <AvatarFallback>{post.author[0]}</AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-transparent" />
+                        )}
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-semibold">{post.author}</span>
@@ -1004,10 +1006,14 @@ const Community = () => {
                           <div className="space-y-3 mb-4">
                             {(post.commentsList ?? []).map((c) => (
                               <div key={String(c.id)} className="flex items-start gap-3">
-                                <Avatar className="w-8 h-8">
-                                  <AvatarImage src={c.avatar} />
-                                  <AvatarFallback>{c.author[0]}</AvatarFallback>
-                                </Avatar>
+                                {c.avatar ? (
+                                  <Avatar className="w-8 h-8">
+                                    <AvatarImage src={c.avatar} />
+                                    <AvatarFallback>{c.author[0]}</AvatarFallback>
+                                  </Avatar>
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-transparent" />
+                                )}
                                 <div className="bg-white p-3 rounded-lg flex-1 border border-gray-100">
                                   <div className="flex items-center justify-between mb-1">
                                     <span className="font-medium text-sm">{c.author}</span>
