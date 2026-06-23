@@ -117,4 +117,240 @@
   .dark .border-gray-100 {
     border-color: hsl(var(--border)) !important;
   }
+
+  /* Form elements (select, input, textarea) dark mode fixes */
+  .dark select,
+  .dark textarea,
+  .dark input[type="text"],
+  .dark input[type="email"],
+  .dark input[type="password"],
+  .dark input[type="number"],
+  .dark input[type="date"],
+  .dark input[type="search"] {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+
+  /* Make sure option text is visible in dark mode */
+  .dark select option {
+    background-color: hsl(var(--secondary)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Ensure placeholder text is readable in dark mode */
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  /* Focus states for form elements */
+  .dark select:focus,
+  .dark textarea:focus,
+  .dark input:focus {
+    border-color: hsl(var(--ring)) !important;
+    outline: none;
+  }
+
+  /* Badge and tag styling in dark mode */
+  .dark .badge,
+  .dark [role="button"][class*="badge"] {
+    background-color: hsl(var(--secondary)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Dropdown menu items - for Radix UI and custom dropdowns */
+  .dark [role="option"],
+  .dark [role="menuitem"],
+  .dark .menu-item {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .dark [role="option"]:hover,
+  .dark [role="menuitem"]:hover,
+  .dark .menu-item:hover {
+    background-color: hsl(var(--secondary)) !important;
+  }
+
+  /* Combobox and select dropdown containers */
+  .dark [role="listbox"],
+  .dark [role="menu"],
+  .dark .dropdown-menu {
+    background-color: hsl(var(--card)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+
+  /* Button styling in dark mode - ensure readability */
+  .dark button:not([class*="bg-"]) {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Ensure all text in cards and containers are readable */
+  .dark .prose,
+  .dark .prose p {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Label styling for dark mode */
+  .dark label {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Specific fixes for filter dropdowns and select menus */
+  .dark .filter-option,
+  .dark [class*="filter"],
+  .dark [class*="sort"],
+  .dark [class*="view-type"] {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+
+  /* Room type, Gender preference, View type options styling */
+  .dark [class*="room"],
+  .dark [class*="gender"],
+  .dark [class*="preference"] {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Post tag styling in community page */
+  .dark [class*="post-tag"],
+  .dark [class*="tag-option"],
+  .dark [class*="post-field"] {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+
+  /* Ensure radio buttons and checkboxes are visible */
+  .dark input[type="radio"],
+  .dark input[type="checkbox"] {
+    accent-color: hsl(var(--primary)) !important;
+  }
+
+  /* Button group styling */
+  .dark [role="group"] button {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+
+  .dark [role="group"] button:hover,
+  .dark [role="group"] button.active,
+  .dark [role="group"] button[aria-pressed="true"] {
+    background-color: hsl(var(--secondary)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+}
+
+/* Feed Page Dark Mode Overrides */
+.dark .feed-filters select,
+.dark .feed-filter-section select,
+.dark .room-type-select,
+.dark .gender-preference-select,
+.dark .view-type-select,
+.dark .sort-select {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .room-type-btn,
+.dark .gender-btn,
+.dark .view-type-btn,
+.dark [class*="filter-btn"],
+.dark [class*="sort-btn"] {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .room-type-btn:hover,
+.dark .gender-btn:hover,
+.dark .view-type-btn:hover,
+.dark .room-type-btn.active,
+.dark .gender-btn.active,
+.dark .view-type-btn.active {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Community Page Dark Mode Overrides */
+.dark .post-tag-select,
+.dark .post-tag-input,
+.dark [class*="post-tag"] select,
+.dark .new-post-field,
+.dark .post-input-field,
+.dark .post-textarea {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .post-tag-option,
+.dark [class*="tag"] option {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .post-tag-btn,
+.dark .tag-btn,
+.dark [class*="tag-btn"] {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .post-tag-btn:hover,
+.dark .tag-btn:hover,
+.dark .post-tag-btn.selected,
+.dark .tag-btn.selected {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+/* Additional global dark mode fixes for any remaining light text on dark backgrounds */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6,
+.dark p,
+.dark span,
+.dark div,
+.dark li {
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Ensure light grays become readable */
+.dark .text-gray-300,
+.dark .text-gray-350,
+.dark .text-slate-400,
+.dark .text-slate-500 {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* Fix placeholder and disabled text */
+.dark ::placeholder {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark :disabled,
+.dark [disabled] {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  opacity: 0.6;
+}
+
+/* Ensure links are visible */
+.dark a,
+.dark [role="link"] {
+  color: hsl(210 40% 96%) !important;
+}
+
+.dark a:hover,
+.dark [role="link"]:hover {
+  color: hsl(210 40% 100%) !important;
 }

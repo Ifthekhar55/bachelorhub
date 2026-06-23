@@ -800,11 +800,11 @@ const Community = () => {
                       className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"
                     />
                     <div className="flex flex-col gap-2 w-full md:w-[190px]">
-                      <label className="text-sm font-medium text-gray-700">Post Tag</label>
+                      <label className="text-sm font-medium text-gray-700 dark:text-white">Post Tag</label>
                       <select
                         value={selectedPostTag}
                         onChange={(e) => setSelectedPostTag(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-slate-800 dark:text-white dark:border-slate-600 focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Select a tag</option>
                         {postTags.map((tag) => (
