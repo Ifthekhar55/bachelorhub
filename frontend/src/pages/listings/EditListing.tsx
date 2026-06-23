@@ -26,6 +26,8 @@ const EditListing = () => {
     rules: [] as string[],
     photos: [] as string[], // data URLs
   })
+  const [sizeWarning, setSizeWarning] = useState<string | null>(null)
+  const MAX_TOTAL_SIZE = 15 * 1024 * 1024 // 15MB limit for safety (20MB backend limit)
 
   const resizeImage = (file: File, maxWidth = 1200, quality = 0.75): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -59,14 +61,33 @@ const EditListing = () => {
     accept: { 'image/*': [] },
     onDrop: async (acceptedFiles) => {
       const urls: string[] = []
+      let totalSize = formData.photos.reduce((sum: number, photo: string) => sum + photo.length, 0)
+      let hasExceeded = false
+
       for (const f of acceptedFiles.slice(0, 5)) {
         try {
           const u = await resizeImage(f as File)
+          totalSize += u.length
+
+          if (totalSize > MAX_TOTAL_SIZE) {
+            hasExceeded = true
+            toast.error('Photos exceed maximum total size. Please remove some photos.')
+            break
+          }
+
           urls.push(u)
         } catch (err) {
           console.warn('drop resize failed', err)
+          toast.error('Failed to process image')
         }
       }
+
+      if (hasExceeded) {
+        setSizeWarning(`Current size: ${(totalSize / 1024 / 1024).toFixed(1)}MB / ${(MAX_TOTAL_SIZE / 1024 / 1024).toFixed(0)}MB limit`)
+        return
+      }
+
+      setSizeWarning(null)
       setFormData((prev: any) => ({ ...prev, photos: [...prev.photos, ...urls].slice(0, 5) }))
     },
   })
@@ -236,6 +257,12 @@ const EditListing = () => {
 
             {step === 3 && (
               <div className="space-y-6">
+                {sizeWarning && (
+                  <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 text-yellow-800">
+                    <p className="font-semibold">⚠️ Upload Size Warning</p>
+                    <p className="text-sm mt-1">{sizeWarning}</p>
+                  </div>
+                )}
                 <div {...getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition">
                   <input {...getInputProps()} />
                   <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -244,13 +271,18 @@ const EditListing = () => {
                 </div>
 
                 {formData.photos.length > 0 && (
-                  <div className="grid grid-cols-3 gap-4">
-                    {formData.photos.map((p:string, idx:number)=> (
-                      <div key={idx} className="relative group">
-                        <img src={p} alt={`Preview ${idx}`} className="w-full h-32 object-cover rounded-lg" />
-                        <button type="button" onClick={()=> removePhoto(idx)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"><X className="w-4 h-4"/></button>
-                      </div>
-                    ))}
+                  <div>
+                    <div className="text-sm text-gray-600 mb-3">
+                      Total size: {((formData.photos.reduce((sum: number, photo: string) => sum + photo.length, 0)) / 1024 / 1024).toFixed(1)}MB / {(MAX_TOTAL_SIZE / 1024 / 1024).toFixed(0)}MB
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      {formData.photos.map((p:string, idx:number)=> (
+                        <div key={idx} className="relative group">
+                          <img src={p} alt={`Preview ${idx}`} className="w-full h-32 object-cover rounded-lg" />
+                          <button type="button" onClick={()=> removePhoto(idx)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"><X className="w-4 h-4"/></button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
