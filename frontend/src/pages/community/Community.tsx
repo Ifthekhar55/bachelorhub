@@ -460,19 +460,33 @@ const Community = () => {
     setEditingText(p.content)
   }
 
-  const handleSaveEdit = (postId: number | string) => {
+  const handleSaveEdit = async (postId: number | string) => {
     const trimmed = editingText.trim()
     if (!trimmed) return
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === postId
-          ? { ...post, content: trimmed, title: trimmed.length > 60 ? `${trimmed.slice(0, 57)}...` : trimmed }
-          : post
+
+    const updatedTitle = trimmed.length > 60 ? `${trimmed.slice(0, 57)}...` : trimmed
+
+    try {
+      const response = await api.put(`/api/community/${postId}`, {
+        title: updatedTitle,
+        content: trimmed,
+      })
+
+      const updatedPost = response.data
+      setPosts((prev) =>
+        prev.map((post) =>
+          String(post.id) === String(postId)
+            ? { ...post, content: updatedPost.content, title: updatedPost.title }
+            : post
+        )
       )
-    )
-    setEditingPostId(null)
-    setEditingText('')
-    toast.success('Post updated successfully')
+      setEditingPostId(null)
+      setEditingText('')
+      toast.success('Post updated successfully')
+    } catch (error) {
+      console.error('Update post failed', error)
+      toast.error('Failed to update post')
+    }
   }
 
   const handleDeletePost = async (postId: number | string) => {

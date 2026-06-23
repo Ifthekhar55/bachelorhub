@@ -70,6 +70,43 @@ export class CommunityController {
     }
   };
 
+  updatePost = async (req: Request, res: Response) => {
+    try {
+      const postId = String(req.params.postId);
+      const { title, content, tag } = req.body;
+
+      if (!content || !content.trim()) {
+        return res.status(400).json({ error: 'Post content is required' });
+      }
+
+      const updatedPost = await prisma.communityPost.update({
+        where: { id: postId },
+        data: {
+          title: title ?? undefined,
+          content: content.trim(),
+          tag: tag ?? undefined,
+        },
+      });
+
+      res.json({
+        id: updatedPost.id,
+        authorId: updatedPost.authorId,
+        author: updatedPost.author,
+        avatar: updatedPost.avatar,
+        title: updatedPost.title,
+        content: updatedPost.content,
+        likes: updatedPost.likes,
+        comments: updatedPost.comments,
+        pinned: updatedPost.pinned,
+        tag: updatedPost.tag,
+        createdAt: updatedPost.createdAt,
+      });
+    } catch (error) {
+      console.error('Update community post error:', error);
+      res.status(500).json({ error: 'Failed to update post' });
+    }
+  };
+
   deletePost = async (req: Request, res: Response) => {
     try {
       const postId = String(req.params.postId);
