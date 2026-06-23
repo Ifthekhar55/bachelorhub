@@ -389,6 +389,12 @@ const Messenger = () => {
     pc.ontrack = (event) => {
       if (event.streams?.[0]) {
         setRemoteStream(event.streams[0])
+        return
+      }
+
+      if (event.track) {
+        const stream = new MediaStream([event.track])
+        setRemoteStream(stream)
       }
     }
 
@@ -631,6 +637,14 @@ const Messenger = () => {
     }
     if (remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = remoteStream
+      remoteAudioRef.current.muted = false
+      remoteAudioRef.current.playsInline = true
+      const playPromise = remoteAudioRef.current.play()
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.warn('Remote audio autoplay failed:', error)
+        })
+      }
     }
   }, [remoteStream])
 
@@ -1246,15 +1260,21 @@ const Messenger = () => {
                       </div>
                     </div>
 
-                    {(callType === 'video' || callStatus === 'incoming') && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {(callType === 'video' || callStatus === 'incoming' || callType === 'audio') && (
+                      <div className={`grid grid-cols-1 ${callType === 'video' ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-3`}>
                         <div className="p-3 bg-black rounded-lg text-white">
                           <p className="text-xs mb-2">Your video</p>
                           <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-48 rounded-lg bg-black object-cover" />
                         </div>
                         <div className="p-3 bg-black rounded-lg text-white">
                           <p className="text-xs mb-2">{callPartner?.name ?? 'Remote'}</p>
-                          <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-48 rounded-lg bg-black object-cover" />
+                          {callType === 'video' ? (
+                            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-48 rounded-lg bg-black object-cover" />
+                          ) : (
+                            <div className="w-full h-48 rounded-lg bg-black flex items-center justify-center text-white text-sm">
+                              Audio call active
+                            </div>
+                          )}
                           <audio ref={remoteAudioRef} autoPlay hidden />
                         </div>
                       </div>
