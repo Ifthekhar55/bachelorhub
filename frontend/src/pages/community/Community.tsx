@@ -901,7 +901,9 @@ const Community = () => {
                             <AvatarFallback>{post.author[0]}</AvatarFallback>
                           </Avatar>
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-transparent" />
+                          <Avatar className="w-10 h-10 bg-slate-100 text-slate-600">
+                            <AvatarFallback>{post.author?.[0] ?? 'U'}</AvatarFallback>
+                          </Avatar>
                         )}
                         <div>
                           <div className="flex items-center gap-2">
@@ -1012,7 +1014,9 @@ const Community = () => {
                                     <AvatarFallback>{c.author[0]}</AvatarFallback>
                                   </Avatar>
                                 ) : (
-                                  <div className="w-8 h-8 rounded-full bg-transparent" />
+                                  <Avatar className="w-8 h-8 bg-slate-100 text-slate-600">
+                                    <AvatarFallback>{c.author?.[0] ?? 'U'}</AvatarFallback>
+                                  </Avatar>
                                 )}
                                 <div className="bg-white p-3 rounded-lg flex-1 border border-gray-100">
                                   <div className="flex items-center justify-between mb-1">
