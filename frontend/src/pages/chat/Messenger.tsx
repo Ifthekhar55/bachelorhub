@@ -634,6 +634,92 @@ const Messenger = () => {
     }
   }, [remoteStream])
 
+  // Global call event listeners (registered once, independent of selectedChatId)
+  useEffect(() => {
+    if (!socket) return
+
+    const handleOfferEvent = (payload: {
+      conversationId: string
+      callerId: string
+      callerName: string
+      type: 'audio' | 'video'
+      sdp: string
+    }) => {
+      if (payload.callerId === user?.id) return
+      if (callStatus === 'in-call' || callStatus === 'connecting') return
+
+      // Auto-select the conversation if not already selected
+      if (selectedChatId !== payload.conversationId.split('_').find((id) => id !== user?.id)) {
+        const callFromId = payload.conversationId.split('_').find((id) => id !== user?.id) || ''
+        if (callFromId && conversations.find((c) => c.id === callFromId)) {
+          setSelectedChatId(callFromId)
+        }
+      }
+
+      setIncomingOffer(payload)
+      setCallStatus('incoming')
+      setCallType(payload.type)
+      setCallPartner({ id: payload.callerId, name: payload.callerName })
+      setCallTimeout()
+    }
+
+    const handleAnswerEvent = async (payload: { conversationId: string; answer: string }) => {
+      if (payload.conversationId !== selectedChatRoom) return
+      const pc = peerConnectionRef.current
+      if (!pc || !payload.answer) return
+      await pc.setRemoteDescription({ type: 'answer', sdp: payload.answer })
+    }
+
+    const handleIceCandidateEvent = async (payload: { conversationId: string; candidate: RTCIceCandidateInit }) => {
+      if (payload.conversationId !== selectedChatRoom) return
+      const pc = peerConnectionRef.current
+      if (!pc || !payload.candidate) return
+      try {
+        await pc.addIceCandidate(payload.candidate)
+      } catch (error) {
+        console.warn('Failed to add ICE candidate', error)
+      }
+    }
+
+    const handleCallRejectedEvent = (payload: { conversationId: string }) => {
+      if (payload.conversationId !== selectedChatRoom) return
+      if (callStatus === 'calling' || callStatus === 'connecting') {
+        toast.error('Call rejected by the other user.')
+        cleanupCall()
+      }
+    }
+
+    const handleMissedCallEvent = (payload: { conversationId: string; type: 'audio' | 'video' }) => {
+      if (payload.conversationId !== selectedChatRoom) return
+      toast.error(`Missed ${payload.type} call.`)
+      cleanupCall()
+    }
+
+    const handleEndCallEvent = (payload: { conversationId: string }) => {
+      if (payload.conversationId !== selectedChatRoom) return
+      if (callStatus !== 'idle') {
+        toast('Call ended.')
+        cleanupCall()
+      }
+    }
+
+    socket.on('offer', handleOfferEvent)
+    socket.on('answer', handleAnswerEvent)
+    socket.on('ice_candidate', handleIceCandidateEvent)
+    socket.on('call_rejected', handleCallRejectedEvent)
+    socket.on('missed_call', handleMissedCallEvent)
+    socket.on('end_call', handleEndCallEvent)
+
+    return () => {
+      socket.off('offer', handleOfferEvent)
+      socket.off('answer', handleAnswerEvent)
+      socket.off('ice_candidate', handleIceCandidateEvent)
+      socket.off('call_rejected', handleCallRejectedEvent)
+      socket.off('missed_call', handleMissedCallEvent)
+      socket.off('end_call', handleEndCallEvent)
+    }
+  }, [socket, callStatus, user?.id, selectedChatRoom])
+
   useEffect(() => {
     if (!socket || !selectedChatId) return
 
@@ -697,76 +783,14 @@ const Messenger = () => {
       socket.once('connect', requestHistory)
     }
 
-    const handleOfferEvent = (payload: {
-      conversationId: string
-      callerId: string
-      callerName: string
-      type: 'audio' | 'video'
-      sdp: string
-    }) => {
-      if (payload.callerId === user?.id) return
-      if (callStatus === 'in-call' || callStatus === 'connecting') return
-
-      setIncomingOffer(payload)
-      setCallStatus('incoming')
-      setCallType(payload.type)
-      setCallPartner({ id: payload.callerId, name: payload.callerName })
-    }
-
-    const handleAnswerEvent = async (payload: { conversationId: string; answer: string }) => {
-      if (payload.conversationId !== selectedChatRoom) return
-      const pc = peerConnectionRef.current
-      if (!pc || !payload.answer) return
-      await pc.setRemoteDescription({ type: 'answer', sdp: payload.answer })
-    }
-
-    const handleIceCandidateEvent = async (payload: { conversationId: string; candidate: RTCIceCandidateInit }) => {
-      if (payload.conversationId !== selectedChatRoom) return
-      const pc = peerConnectionRef.current
-      if (!pc || !payload.candidate) return
-      try {
-        await pc.addIceCandidate(payload.candidate)
-      } catch (error) {
-        console.warn('Failed to add ICE candidate', error)
-      }
-    }
-
-    const handleCallRejectedEvent = (payload: { conversationId: string }) => {
-      if (payload.conversationId !== selectedChatRoom) return
-      if (callStatus === 'calling' || callStatus === 'connecting') {
-        toast.error('Call rejected by the other user.')
-        cleanupCall()
-      }
-    }
-
-    const handleMissedCallEvent = (payload: { conversationId: string; type: 'audio' | 'video' }) => {
-      if (payload.conversationId !== selectedChatRoom) return
-      toast.error(`Missed ${payload.type} call.`)
-      cleanupCall()
-    }
-
-    const handleEndCallEvent = (payload: { conversationId: string }) => {
-      if (payload.conversationId !== selectedChatRoom) return
-      if (callStatus !== 'idle') {
-        toast('Call ended.')
-        cleanupCall()
-      }
-    }
-
     return () => {
       socket.off('conversation_history', handleHistory)
       socket.off('receive_message', handleReceive)
       socket.off('message_saved', handleMessageSaved)
       socket.off('message_updated', handleMessageUpdated)
       socket.off('message_deleted', handleMessageDeleted)
-      socket.off('offer', handleOfferEvent)
-      socket.off('answer', handleAnswerEvent)
-      socket.off('ice_candidate', handleIceCandidateEvent)
-      socket.off('call_rejected', handleCallRejectedEvent)
-      socket.off('missed_call', handleMissedCallEvent)
-      socket.off('end_call', handleEndCallEvent)
     }
-  }, [socket, selectedChatId, selectedChatRoom, callStatus, user?.id])
+  }, [socket, selectedChatId, selectedChatRoom])
 
   const filteredConversations = conversations.filter((conv) =>
     conv.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
