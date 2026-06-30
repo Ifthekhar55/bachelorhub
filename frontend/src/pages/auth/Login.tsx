@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react'
 import { Button } from '../../components/ui/button'
@@ -8,7 +8,8 @@ import { toast } from 'react-hot-toast'
 
 const Login = () => {
   const navigate = useNavigate()
-  const { login, isLoading } = useAuthStore()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { login, checkAuth, isLoading } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
@@ -25,6 +26,31 @@ const Login = () => {
       toast.error('Invalid email or password')
     }
   }
+
+  const handleSocialLoginRedirect = (provider: 'google' | 'facebook') => {
+    const redirect = `${import.meta.env.VITE_API_URL || ''}/api/auth/${provider}`
+    window.location.href = redirect
+  }
+
+  const handleSocialToken = async () => {
+    const token = searchParams.get('token')
+    if (!token) return
+
+    try {
+      localStorage.setItem('accessToken', token)
+      await checkAuth()
+      toast.success('Login successful!')
+      navigate('/')
+    } catch (error) {
+      toast.error('Social login failed. Please try again.')
+    } finally {
+      setSearchParams({})
+    }
+  }
+
+  useEffect(() => {
+    handleSocialToken()
+  }, [searchParams])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center py-12 px-4">
@@ -117,11 +143,19 @@ const Login = () => {
             </div>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <button className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+            <button
+              type="button"
+              onClick={() => handleSocialLoginRedirect('google')}
+              className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
               <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5 mr-2" />
               Google
             </button>
-            <button className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+            <button
+              type="button"
+              onClick={() => handleSocialLoginRedirect('facebook')}
+              className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
               <img src="https://www.facebook.com/favicon.ico" alt="Facebook" className="w-5 h-5 mr-2" />
               Facebook
             </button>

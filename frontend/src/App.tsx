@@ -96,6 +96,7 @@ function App() {
           
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/auth/callback" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

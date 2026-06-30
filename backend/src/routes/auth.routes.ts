@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import passport from 'passport';
+import { Strategy as FacebookStrategy } from 'passport-facebook';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Prisma } from '@prisma/client';
 import nodemailer from 'nodemailer';
 import { prisma } from '../prisma';
@@ -18,6 +22,86 @@ const otpStore = new Map<string, {
   resendAvailableAt: Date;
   userId: string;
 }>();
+
+const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5003}`
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
+const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || ''
+const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET || ''
+
+const createOrFindSocialUser = async (email: string, name: string, provider: string) => {
+  if (!email) {
+    throw new Error('Email is required for social login')
+  }
+
+  const existingUser = await prisma.user.findUnique({ where: { email } })
+  if (existingUser) {
+    return existingUser
+  }
+
+  const randomPassword = crypto.randomBytes(16).toString('hex')
+  const hashedPassword = await bcrypt.hash(randomPassword, 10)
+
+  return prisma.user.create({
+    data: {
+      name,
+      email,
+      phone: '',
+      password: hashedPassword,
+      isVerified: true,
+    },
+  })
+}
+
+const configurePassport = () => {
+  if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: GOOGLE_CLIENT_ID,
+          clientSecret: GOOGLE_CLIENT_SECRET,
+          callbackURL: `${BACKEND_URL}/api/auth/google/callback`,
+        },
+        async (_accessToken, _refreshToken, profile, done) => {
+          try {
+            const email = profile.emails?.[0]?.value
+            const name = [profile.name?.givenName, profile.name?.familyName].filter(Boolean).join(' ').trim() || profile.displayName || 'Google User'
+            const user = await createOrFindSocialUser(email ?? '', name, 'google')
+            done(null, user)
+          } catch (err) {
+            done(err as Error)
+          }
+        }
+      )
+    )
+  }
+
+  if (FACEBOOK_APP_ID && FACEBOOK_APP_SECRET) {
+    passport.use(
+      new FacebookStrategy(
+        {
+          clientID: FACEBOOK_APP_ID,
+          clientSecret: FACEBOOK_APP_SECRET,
+          callbackURL: `${BACKEND_URL}/api/auth/facebook/callback`,
+          profileFields: ['id', 'displayName', 'emails', 'name'],
+        },
+        async (_accessToken, _refreshToken, profile, done) => {
+          try {
+            const email = profile.emails?.[0]?.value
+            const name = profile.displayName || [profile.name?.givenName, profile.name?.familyName].filter(Boolean).join(' ').trim() || 'Facebook User'
+            const user = await createOrFindSocialUser(email ?? '', name, 'facebook')
+            done(null, user)
+          } catch (err) {
+            done(err as Error)
+          }
+        }
+      )
+    )
+  }
+}
+
+configurePassport()
 
 const smtpHost = process.env.SMTP_HOST;
 const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : undefined;
@@ -180,6 +264,62 @@ router.post('/resend-otp', async (req, res) => {
     res.status(500).json({ error: 'Unable to resend OTP' });
   }
 });
+
+// Google social login start
+router.get('/google', (req, res, next) => {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    return res.status(500).json({ error: 'Google login is not configured on the server' })
+  }
+  next()
+}, passport.authenticate('google', { scope: ['profile', 'email'] }))
+
+router.get('/google/callback', (req, res, next) => {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    return res.redirect(`${FRONTEND_URL}/login?error=google_not_configured`)
+  }
+  next()
+}, passport.authenticate('google', { session: false, failureRedirect: `${FRONTEND_URL}/login?error=google_failed` }), (req, res) => {
+  const user = req.user as any
+  if (!user?.id) {
+    return res.redirect(`${FRONTEND_URL}/login?error=google_failed`)
+  }
+
+  const token = jwt.sign(
+    { userId: user.id, role: user.role },
+    process.env.JWT_SECRET || 'secret',
+    { expiresIn: '1d' }
+  )
+
+  res.redirect(`${FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`)
+})
+
+// Facebook social login start
+router.get('/facebook', (req, res, next) => {
+  if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
+    return res.status(500).json({ error: 'Facebook login is not configured on the server' })
+  }
+  next()
+}, passport.authenticate('facebook', { scope: ['email'] }))
+
+router.get('/facebook/callback', (req, res, next) => {
+  if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
+    return res.redirect(`${FRONTEND_URL}/login?error=facebook_not_configured`)
+  }
+  next()
+}, passport.authenticate('facebook', { session: false, failureRedirect: `${FRONTEND_URL}/login?error=facebook_failed` }), (req, res) => {
+  const user = req.user as any
+  if (!user?.id) {
+    return res.redirect(`${FRONTEND_URL}/login?error=facebook_failed`)
+  }
+
+  const token = jwt.sign(
+    { userId: user.id, role: user.role },
+    process.env.JWT_SECRET || 'secret',
+    { expiresIn: '1d' }
+  )
+
+  res.redirect(`${FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`)
+})
 
 // Test login
 router.post('/login', async (req, res) => {
