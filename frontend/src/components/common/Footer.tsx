@@ -1,4 +1,5 @@
 import { Heart } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 const Footer = () => {
   return (
@@ -12,18 +13,19 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-3">Quick Links</h4>
             <ul className="space-y-2 text-gray-400">
-              <li><a href="/feed" className="hover:text-white">Find House</a></li>
-              <li><a href="/homechef" className="hover:text-white">Homechef</a></li>
-              <li><a href="/used-items" className="hover:text-white">Used Items</a></li>
-              <li><a href="/community" className="hover:text-white">Community</a></li>
+              <li><Link to="/feed" className="hover:text-white">Find House</Link></li>
+              <li><Link to="/homechef" className="hover:text-white">Homechef</Link></li>
+              <li><Link to="/used-items" className="hover:text-white">Used Items</Link></li>
+              <li><Link to="/community" className="hover:text-white">Community</Link></li>
+              <li><Link to="/blood-requests" className="hover:text-white">Need Blood?</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-3">Support</h4>
             <ul className="space-y-2 text-gray-400">
-              <li><a href="/terms" className="hover:text-white">Terms & Conditions</a></li>
-              <li><a href="/privacy" className="hover:text-white">Privacy Policy</a></li>
-              <li><a href="/help" className="hover:text-white">Help & Support</a></li>
+              <li><Link to="/terms" className="hover:text-white">Terms & Conditions</Link></li>
+              <li><Link to="/privacy" className="hover:text-white">Privacy Policy</Link></li>
+              <li><Link to="/help" className="hover:text-white">Help & Support</Link></li>
             </ul>
           </div>
           <div>
