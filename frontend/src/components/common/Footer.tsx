@@ -29,8 +29,7 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-3">Contact</h4>
             <ul className="space-y-2 text-gray-400">
-              <li>Email: support@bachelorhub.com</li>
-              <li>Phone: +880 1608365971</li>
+              <li>Email: supportbachelorhub@gmail.com</li>
             </ul>
           </div>
         </div>
