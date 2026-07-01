@@ -165,9 +165,9 @@ const Help = () => {
             </p>
             <div className="space-y-3 text-gray-700 dark:text-gray-300">
               <p>
-                Email: <a href="mailto:support@bachelorhub.com" className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300">support@bachelorhub.com</a>
+                Email: <a href="mailto:supportbachelorhub@gmail.com" className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300">supportbachelorhub@gmail.com</a>
               </p>
-              <p>Phone: <a href="tel:+8801608365971" className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300">+880 1608365971</a></p>
+              
               <p>Response time: typically within 24 hours.</p>
             </div>
           </div>

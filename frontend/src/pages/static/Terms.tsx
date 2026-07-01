@@ -57,8 +57,8 @@ const Terms = () => {
             </section>
 
             <div className="border-t pt-6 mt-6">
-              <p className="text-sm text-gray-500">Last updated: January 1, 2024</p>
-              <p className="text-sm text-gray-500 mt-2">For questions, contact: legal@bachelorhub.com</p>
+              <p className="text-sm text-gray-500">Last updated: July 1, 2026</p>
+              <p className="text-sm text-gray-500 mt-2">For questions, contact: supportbachelorhub@gmail.com</p>
             </div>
           </div>
         </div>
