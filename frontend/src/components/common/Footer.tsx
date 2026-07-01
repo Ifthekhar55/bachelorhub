@@ -37,6 +37,7 @@ const Footer = () => {
         </div>
         <div className="border-t border-gray-800 mt-8 pt-6 text-center text-gray-400">
           <p>Made with <Heart className="inline w-4 h-4 text-red-500" /> for Bangladeshi students & professionals</p>
+          <p className="mt-2">&copy; {new Date().getFullYear()} BachelorHub. All rights reserved.</p>
         </div>
       </div>
     </footer>
