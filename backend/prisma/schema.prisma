@@ -62,6 +62,25 @@ model User {
   bloodNotifications BloodNotification[]
 }
 
+model SupportReport {
+  id          String   @id @default(uuid())
+  name        String?
+  email       String
+  issueType   String?
+  description String
+  relatedUrl  String?
+  createdAt   DateTime @default(now())
+}
+
+model SupportFeedback {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String
+  rating    String?
+  message   String
+  createdAt DateTime @default(now())
+}
+
 model Listing {
   id               String        @id @default(uuid())
   landlordId       String
