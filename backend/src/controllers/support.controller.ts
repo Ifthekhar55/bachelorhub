@@ -5,35 +5,79 @@ import { prisma } from '../prisma'
 const smtpHost = process.env.SMTP_HOST
 const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587
 const smtpUser = process.env.SMTP_USER
-const smtpPass = (process.env.SMTP_PASS || '').replace(/\s+/g, '')
+const smtpPassRaw = process.env.SMTP_PASS || ''
+const smtpPass = smtpPassRaw.replace(/\s+/g, '')
 const supportEmail = process.env.SUPPORT_EMAIL || 'supportbachelorhub@gmail.com'
 
-const transporter = smtpHost && smtpPort && smtpUser && smtpPass
-  ? nodemailer.createTransport({
+let transporter: nodemailer.Transporter | null = null
+
+async function initTransporter() {
+  if (transporter) return transporter
+
+  if (smtpHost && smtpPort && smtpUser && smtpPass) {
+    transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: false,
       auth: { user: smtpUser, pass: smtpPass },
     })
-  : null
+
+    try {
+      await transporter.verify()
+      console.log('SMTP transporter verified')
+    } catch (err) {
+      console.error('SMTP transporter verification failed:', err)
+    }
+
+    return transporter
+  }
+
+  // Fallback: create a test account (useful for local dev)
+  try {
+    const testAccount = await nodemailer.createTestAccount()
+    transporter = nodemailer.createTransport({
+      host: testAccount.smtp.host,
+      port: testAccount.smtp.port,
+      secure: testAccount.smtp.secure,
+      auth: { user: testAccount.user, pass: testAccount.pass },
+    })
+    console.log('Using nodemailer test account for emails. Preview URL will be available in logs.')
+    return transporter
+  } catch (err) {
+    console.error('Failed to create nodemailer test account:', err)
+    transporter = null
+    return null
+  }
+}
 
 const sendSupportEmail = async (subject: string, html: string, text: string) => {
-  if (!transporter || !smtpUser) {
-    console.warn('SMTP not configured. Support email was not sent.')
+  const tx = await initTransporter()
+  if (!tx) {
+    console.warn('No transporter available. Support email was not sent.')
     return false
   }
 
   try {
-    await transporter.sendMail({
-      from: smtpUser,
+    const info = await tx.sendMail({
+      from: smtpUser || 'no-reply@example.com',
       to: supportEmail,
       subject,
       text,
       html,
     })
+
+    // If using test account, log preview URL
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyInfo = info as any
+    if (anyInfo && anyInfo.messageId && anyInfo.preview) {
+      console.log('Support email sent (preview):', anyInfo.preview)
+    } else if (nodemailer.getTestMessageUrl(info)) {
+      console.log('Support email preview URL:', nodemailer.getTestMessageUrl(info))
+    }
+
     return true
   } catch (error) {
-    console.error('Failed to send support email:', error)
+    console.error('Failed to send support email:', (error as any)?.message || error, error)
     return false
   }
 }
