@@ -21,6 +21,29 @@ import { authenticate } from './middleware/auth.middleware';
 import { setSocketServer } from './socket';
 
 export const prisma = new PrismaClient();
+
+function getDatabaseInfo() {
+  const dbUrl = process.env.DATABASE_URL || ''
+  try {
+    const url = new URL(dbUrl)
+    return {
+      protocol: url.protocol.replace(':', ''),
+      host: url.hostname,
+      port: url.port || (url.protocol === 'postgres:' ? '5432' : ''),
+      database: url.pathname.replace(/\//g, ''),
+    }
+  } catch {
+    return null
+  }
+}
+
+const dbInfo = getDatabaseInfo()
+if (dbInfo) {
+  console.log(`📦 Database: ${dbInfo.protocol}://${dbInfo.host}:${dbInfo.port}/${dbInfo.database}`)
+} else {
+  console.warn('⚠️ DATABASE_URL is not configured or is invalid')
+}
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -168,8 +191,39 @@ app.get('/api/chat/history', async (req, res) => {
 })
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
+app.get('/health', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    const supportReportExists = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'SupportReport'
+      ) AS exists
+    `
+    const supportFeedbackExists = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'SupportFeedback'
+      ) AS exists
+    `
+    const reportTableExists = supportReportExists[0]?.exists ?? false
+    const feedbackTableExists = supportFeedbackExists[0]?.exists ?? false
+
+    return res.json({
+      status: 'ok',
+      timestamp: new Date(),
+      database: dbInfo || null,
+      supportReportTable: reportTableExists ? 'exists' : 'missing',
+      supportFeedbackTable: feedbackTableExists ? 'exists' : 'missing',
+    })
+  } catch (error) {
+    console.error('Health check failed:', error)
+    return res.status(500).json({
+      status: 'error',
+      error: 'Database connection failed or schema is incomplete',
+      database: dbInfo || null,
+    })
+  }
 });
 
 // ✅ FIXED: 404 handler for undefined routes (remove the '*', just use app.use)
