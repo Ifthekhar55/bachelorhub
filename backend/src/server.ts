@@ -51,6 +51,12 @@ const io = new Server(server, {
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
   },
+  // Make WebSocket pings more frequent and tolerant for mobile WebViews
+  // and prefer websocket transport to avoid polling fallbacks that may
+  // be unreliable on some Android WebViews.
+  transports: ['websocket'],
+  pingInterval: 10000, // send a ping every 10s
+  pingTimeout: 120000, // wait up to 120s for a pong before considering the client disconnected
 });
 
 setSocketServer(io)
@@ -468,8 +474,13 @@ io.on('connection', (socket) => {
     socket.to(room).emit('end_call', payload)
   })
 
-  socket.on('disconnect', () => {
-    console.log('Client disconnected', socket.id)
+  socket.on('disconnect', (reason) => {
+    try {
+      const transport = (socket as any).conn?.transport?.name || 'unknown'
+      console.log('Client disconnected', socket.id, { reason, transport })
+    } catch (err) {
+      console.log('Client disconnected', socket.id, { reason })
+    }
   })
 })
 

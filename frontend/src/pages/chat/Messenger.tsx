@@ -321,9 +321,11 @@ const Messenger = () => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const callTimerRef = useRef<number | null>(null)
   const callStatusRef = useRef<CallState>('idle')
+  const callAnsweredRef = useRef(false)
 
   const cleanupCall = () => {
     clearCallTimeout()
+    callAnsweredRef.current = false
     peerConnectionRef.current?.close()
     peerConnectionRef.current = null
 
@@ -343,7 +345,7 @@ const Messenger = () => {
     setIsMuted(false)
     setCameraEnabled(true)
     setCallError(null)
-    setCallStatus('idle')
+    updateCallStatus('idle')
   }
 
   const updateCallStatus = (status: CallState) => {
@@ -361,7 +363,7 @@ const Messenger = () => {
   const setCallTimeout = () => {
     clearCallTimeout()
     callTimerRef.current = window.setTimeout(() => {
-      if (callStatusRef.current === 'in-call' || callStatusRef.current === 'idle') return
+      if (callStatusRef.current === 'in-call' || callStatusRef.current === 'idle' || callAnsweredRef.current) return
       const conversationId = incomingOffer?.conversationId ?? selectedChatRoom
       if (socket && conversationId) {
         socket.emit('missed_call', { conversationId, type: callType ?? 'audio' })
@@ -399,12 +401,31 @@ const Messenger = () => {
     }
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'connected') {
-        setCallStatus('in-call')
+      if (pc.connectionState === 'connected' || pc.connectionState === 'completed') {
+        // Clear any dialing/incoming timeout when the connection is established
+        clearCallTimeout()
+        updateCallStatus('in-call')
       }
 
       if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
         cleanupCall()
+      }
+    }
+
+    // Some browsers/platforms signal readiness on the ICE connection state.
+    pc.oniceconnectionstatechange = () => {
+      try {
+        const iceState = (pc as any).iceConnectionState || (pc as RTCPeerConnection).iceConnectionState
+        if (iceState === 'connected' || iceState === 'completed') {
+          clearCallTimeout()
+          updateCallStatus('in-call')
+        }
+
+        if (['disconnected', 'failed', 'closed'].includes(iceState)) {
+          cleanupCall()
+        }
+      } catch (err) {
+        // ignore
       }
     }
 
@@ -423,6 +444,7 @@ const Messenger = () => {
     if (!socket || !selectedChat) return
 
     const nextStatus = selectedChat.online ? 'ringing' : 'calling'
+    callAnsweredRef.current = false
     updateCallStatus(nextStatus)
     setCallType(type)
     setCallPartner({ id: selectedChat.id, name: selectedChat.name })
@@ -445,7 +467,17 @@ const Messenger = () => {
         type,
         sdp: offer.sdp ?? '',
       })
-      setCallTimeout()
+      // Start a longer dialing timeout for mobile/webview connectivity
+      clearCallTimeout()
+      callTimerRef.current = window.setTimeout(() => {
+        if (callStatusRef.current === 'in-call' || callStatusRef.current === 'idle') return
+        const conversationId = selectedChatRoom
+        if (socket && conversationId) {
+          socket.emit('missed_call', { conversationId, type: callType ?? 'audio' })
+        }
+        toast.error(`Missed ${callType ?? 'call'}.`)
+        cleanupCall()
+      }, 60000)
     } catch (error) {
       console.error('Start call failed:', error)
       setCallError('Could not access microphone or camera.')
@@ -456,6 +488,7 @@ const Messenger = () => {
   const acceptCall = async () => {
     if (!socket || !incomingOffer) return
 
+    callAnsweredRef.current = true
     updateCallStatus('connecting')
     setCallType(incomingOffer.type)
     setCallPartner({ id: incomingOffer.callerId, name: incomingOffer.callerName })
@@ -670,16 +703,31 @@ const Messenger = () => {
       }
 
       setIncomingOffer(payload)
-      setCallStatus('incoming')
+      callAnsweredRef.current = false
+      updateCallStatus('incoming')
       setCallType(payload.type)
       setCallPartner({ id: payload.callerId, name: payload.callerName })
-      setCallTimeout()
+      // Give the user up to 60s to accept the call on mobile
+      // (webview/network can delay signaling). Reset any previous timer.
+      clearCallTimeout()
+      callTimerRef.current = window.setTimeout(() => {
+        if (callStatusRef.current === 'in-call' || callStatusRef.current === 'idle') return
+        const conversationId = incomingOffer?.conversationId ?? selectedChatRoom
+        if (socket && conversationId) {
+          socket.emit('missed_call', { conversationId, type: callType ?? 'audio' })
+        }
+        toast.error(`Missed ${callType ?? 'call'}.`)
+        cleanupCall()
+      }, 60000)
     }
 
     const handleAnswerEvent = async (payload: { conversationId: string; answer: string }) => {
       if (payload.conversationId !== selectedChatRoom) return
       const pc = peerConnectionRef.current
       if (!pc || !payload.answer) return
+      callAnsweredRef.current = true
+      clearCallTimeout()
+      updateCallStatus('in-call')
       await pc.setRemoteDescription({ type: 'answer', sdp: payload.answer })
     }
 
@@ -704,6 +752,7 @@ const Messenger = () => {
 
     const handleMissedCallEvent = (payload: { conversationId: string; type: 'audio' | 'video' }) => {
       if (payload.conversationId !== selectedChatRoom) return
+      if (callStatusRef.current === 'in-call' || callAnsweredRef.current) return
       toast.error(`Missed ${payload.type} call.`)
       cleanupCall()
     }
