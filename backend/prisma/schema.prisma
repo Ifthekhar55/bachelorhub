@@ -90,6 +90,7 @@ model Listing {
   priceValue       Int?
   availableSeats   Int
   location         String
+  phone            String?
   photos           String[]
   features         String[]       @default([])
   rules            String[]       @default([])

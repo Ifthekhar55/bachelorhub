@@ -21,6 +21,7 @@ const CreateListing = () => {
     location: '',
     rent: '',
     availableSeats: '',
+    phone: '',
     genderPreference: 'any',
     furnishing: 'unfurnished',
     availableFrom: '',
@@ -135,6 +136,7 @@ const CreateListing = () => {
         rent: Number(formData.rent) || 0,
         priceValue: Number(formData.rent) || 0,
         availableSeats: Number(formData.availableSeats) || 1,
+        phone: formData.phone.trim(),
         genderPreference: formData.genderPreference,
         furnishing: formData.furnishing,
         availableFrom: formData.availableFrom || undefined,
@@ -271,6 +273,19 @@ const CreateListing = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="01XXXXXXXXX"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Gender Preference
