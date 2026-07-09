@@ -39,7 +39,6 @@ import NotFound from './pages/static/NotFound'
 import PrivateRoute from './routes/PrivateRoute'
 import AdminRoute from './routes/adminRoute'
 import GlobalCallOverlay from './components/call/GlobalCallOverlay'
-import SocketDebug from './components/common/SocketDebug'
 
 function App() {
   const { checkAuth } = useAuthStore()
@@ -80,11 +79,6 @@ function App() {
       <main className="flex-1">
         {/* Global Call Overlay - Shows on top of everything */}
         <GlobalCallOverlay />
-        
-        {/* Socket Debug - Shows connection status (remove in production if desired) */}
-        <div className="fixed bottom-4 right-4 z-50">
-          <SocketDebug />
-        </div>
         
         <Routes>
           {/* Public Routes */}
