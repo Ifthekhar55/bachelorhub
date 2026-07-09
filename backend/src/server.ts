@@ -46,17 +46,44 @@ if (dbInfo) {
 
 const app = express();
 const server = http.createServer(app);
+const allowedOrigins = new Set<string>([
+  process.env.FRONTEND_URL,
+  process.env.BACKEND_URL,
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5003',
+  'http://127.0.0.1:5003',
+  'https://bachelorhub-production.up.railway.app',
+  'capacitor://localhost',
+].filter(Boolean) as string[])
+
+const isOriginAllowed = (origin?: string) => {
+  if (!origin) return true
+  if (allowedOrigins.has(origin)) return true
+  if (origin.startsWith('file://')) return true
+  if (/^https:\/\/.*\.up\.railway\.app$/i.test(origin)) return true
+  if (/^https:\/\/.*\.vercel\.app$/i.test(origin)) return true
+  if (/^http:\/\/localhost(:\d+)?$/i.test(origin)) return true
+  if (/^http:\/\/127\.0\.0\.1(:\d+)?$/i.test(origin)) return true
+  return false
+}
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) {
+        callback(null, true)
+        return
+      }
+      callback(new Error(`Origin ${origin} not allowed by CORS`))
+    },
     credentials: true,
   },
-  // Make WebSocket pings more frequent and tolerant for mobile WebViews
-  // and prefer websocket transport to avoid polling fallbacks that may
-  // be unreliable on some Android WebViews.
-  transports: ['websocket'],
-  pingInterval: 10000, // send a ping every 10s
-  pingTimeout: 120000, // wait up to 120s for a pong before considering the client disconnected
+  transports: ['websocket', 'polling'],
+  pingInterval: 10000,
+  pingTimeout: 120000,
 });
 
 setSocketServer(io)
@@ -86,7 +113,7 @@ io.use((socket, next) => {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(passport.initialize());
@@ -437,7 +464,7 @@ io.on('connection', (socket) => {
     }
   })
 
-  socket.on('offer', (payload: { conversationId: string; callerId: string; callerName: string; type: 'audio' | 'video'; sdp: string }) => {
+  socket.on('offer', (payload: { conversationId: string; callId?: string; callerId: string; callerName: string; type: 'audio' | 'video'; sdp: string }) => {
     const room = `conversation_${payload.conversationId}`
     socket.to(room).emit('offer', payload)
 
@@ -448,30 +475,31 @@ io.on('connection', (socket) => {
     }
   })
 
-  socket.on('answer', (payload: { conversationId: string; answer: string }) => {
+  socket.on('answer', (payload: { conversationId: string; callId?: string; answer: string }) => {
     const room = `conversation_${payload.conversationId}`
     socket.to(room).emit('answer', payload)
   })
 
-  socket.on('ice_candidate', (payload: { conversationId: string; candidate: any; senderId: string }) => {
+  socket.on('ice_candidate', (payload: { conversationId: string; callId?: string; candidate: any; senderId: string }) => {
     const room = `conversation_${payload.conversationId}`
     socket.to(room).emit('ice_candidate', payload)
   })
 
-  socket.on('call_rejected', (payload: { conversationId: string }) => {
+  socket.on('call_rejected', (payload: { conversationId: string; callId?: string }) => {
     const room = `conversation_${payload.conversationId}`
     socket.to(room).emit('call_rejected', payload)
   })
 
-  socket.on('missed_call', (payload: { conversationId: string; type: 'audio' | 'video' }) => {
+  socket.on('missed_call', (payload: { conversationId: string; callId?: string; type: 'audio' | 'video' }) => {
     const room = `conversation_${payload.conversationId}`
     // Broadcast to the entire room (including sender) so both sides see the missed-call state.
     io.in(room).emit('missed_call', payload)
   })
 
-  socket.on('end_call', (payload: { conversationId: string }) => {
+  socket.on('end_call', (payload: { conversationId: string; callId?: string }) => {
     const room = `conversation_${payload.conversationId}`
-    socket.to(room).emit('end_call', payload)
+    // Broadcast to the whole conversation room so every participant sees the same end state.
+    io.in(room).emit('end_call', payload)
   })
 
   socket.on('disconnect', (reason) => {

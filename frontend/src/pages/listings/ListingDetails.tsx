@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { toast } from 'react-hot-toast'
 import api from '../../services/api'
+import { buildShareUrl } from '../../utils/share'
 
 const landlordChatIdMap: Record<string, number> = {
   'Md. Rahman': 1,
@@ -122,7 +123,7 @@ const ListingDetail = () => {
   }
 
   const handleShare = async () => {
-    const shareUrl = window.location.href
+    const shareUrl = buildShareUrl(`/listing/${id}`)
     try {
       if ((navigator as any).share) {
         await (navigator as any).share({ title: listing?.title || 'Listing', url: shareUrl })

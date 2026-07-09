@@ -1,9 +1,29 @@
-import type { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
-  appId: 'com.bachelorhub.app',
-  appName: 'BachelorHub',
-  webDir: 'dist'
-};
-
-export default config;
+{
+  "appId": "com.bachelorhub.app",
+  "appName": "BachelorHub",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": true,
+    "captureInput": true,
+    "allowClearText": true
+  },
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor",
+    "allowNavigation": ["*"]
+  },
+  "plugins": {
+    "Camera": {
+      "permissions": {
+        "camera": true,
+        "microphone": true
+      }
+    },
+    "Audio": {
+      "permissions": {
+        "recordAudio": true
+      }
+    }
+  }
+}

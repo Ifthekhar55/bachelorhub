@@ -2,7 +2,7 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
-import { useSocket } from './contexts/SocketContext'  // ✅ ADD THIS line (import)
+import { useSocket, useSocketConnected } from './contexts/SocketContext'
 import Navbar from './components/common/Navbar'
 import Footer from './components/common/Footer'
 import HomePage from './pages/HomePage'
@@ -25,7 +25,7 @@ import Register from './pages/auth/Register'
 import VerifyOTP from './pages/auth/VerifyOTP'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import Community from './pages/community/Community'
-import UsedItems from './pages/used-items/UsedItems';
+import UsedItems from './pages/used-items/UsedItems'
 import UsedItemDetail from './pages/used-items/UsedItemDetails'
 import PostUsedItem from './pages/used-items/PostUsedItem'
 import EditUsedItem from './pages/used-items/EditUsedItem'
@@ -38,12 +38,15 @@ import Help from './pages/Help'
 import NotFound from './pages/static/NotFound'
 import PrivateRoute from './routes/PrivateRoute'
 import AdminRoute from './routes/adminRoute'
+import GlobalCallOverlay from './components/call/GlobalCallOverlay'
+import SocketDebug from './components/common/SocketDebug'
 
 function App() {
   const { checkAuth } = useAuthStore()
-  const socket = useSocket()  // ✅ ADD THIS LINE (get socket instance)
+  const socket = useSocket()
+  const socketConnected = useSocketConnected()
 
-  // ✅ ADD THIS useEffect FOR TESTING SOCKET
+  // Check socket connection
   useEffect(() => {
     if (!socket) {
       console.log('⏳ Waiting for socket connection...')
@@ -66,6 +69,7 @@ function App() {
     }
   }, [socket])
 
+  // Check auth on mount
   useEffect(() => {
     checkAuth()
   }, [])
@@ -74,6 +78,14 @@ function App() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
+        {/* Global Call Overlay - Shows on top of everything */}
+        <GlobalCallOverlay />
+        
+        {/* Socket Debug - Shows connection status (remove in production if desired) */}
+        <div className="fixed bottom-4 right-4 z-50">
+          <SocketDebug />
+        </div>
+        
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<HomePage />} />

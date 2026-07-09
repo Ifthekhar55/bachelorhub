@@ -11,6 +11,7 @@ import {
 import { Button } from "../../components/ui/button";
 import api from "../../services/api";
 import { toast } from "react-hot-toast";
+import { buildShareUrl } from '../../utils/share';
 
 interface House {
   id: string;
@@ -96,7 +97,7 @@ const FindHouse: React.FC = () => {
   };
 
   const handleShareListing = async (house: House) => {
-    const url = `${window.location.origin}/listing/${house.id}`;
+    const url = buildShareUrl(`/listing/${house.id}`);
     const text = `Check out this listing on BachelorHub: ${house.title} - ${url}`;
 
     if (navigator.share) {

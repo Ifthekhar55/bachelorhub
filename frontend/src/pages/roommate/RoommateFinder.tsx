@@ -20,6 +20,7 @@ import {
 import api from '../../services/api'
 import { toast } from 'react-hot-toast'
 import { useAuthStore } from '../../store/authStore'
+import { buildShareUrl } from '../../utils/share'
 
 interface Chef {
   id: string
@@ -242,7 +243,7 @@ const RoommateFinder = () => {
   }
 
   const handleShareChef = async (chef: Chef) => {
-    const profileUrl = `${window.location.origin}/profile/${chef.id}`
+    const profileUrl = buildShareUrl(`/profile/${chef.id}`)
     const shareText = `Check out ${chef.name} on BachelorHub Homechef: ${profileUrl}`
 
     if (navigator.share) {

@@ -30,6 +30,7 @@ import { MoreVertical } from 'lucide-react'
 import api from '../../services/api'
 import { toast } from 'react-hot-toast'
 import { useAuthStore } from '../../store/authStore'
+import { buildShareUrl } from '../../utils/share'
 
 interface Comment {
   id: number | string
@@ -608,8 +609,9 @@ const Community = () => {
 
   const handleSharePost = (platform: string, post: Post) => {
     const text = `${post.title} - ${post.content}`
+    const shareUrl = buildShareUrl(`/community`)
     const encodedText = encodeURIComponent(text)
-    const encodedUrl = encodeURIComponent(window.location.href)
+    const encodedUrl = encodeURIComponent(shareUrl)
     const urls: Record<string, string> = {
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`,
       messenger: `https://www.messenger.com/share?link=${encodedUrl}&redirect_uri=${encodedUrl}`,

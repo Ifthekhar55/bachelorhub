@@ -4,7 +4,8 @@ import { Search, Send, Phone, Video, MoreVertical, Smile, Paperclip, Image, Mic,
 import { Button } from '../../components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog'
-import { useSocket } from '../../contexts/SocketContext'
+import { useSocket, useSocketConnected } from '../../contexts/SocketContext'
+import { useCall } from '../../contexts/CallContext'
 import { useAuthStore } from '../../store/authStore'
 import api from '../../services/api'
 import { toast } from 'react-hot-toast'
@@ -54,8 +55,68 @@ const getOtherUserIdFromRoom = (roomId: string, userId?: string) => {
   return ids.find((id) => id !== userId) || roomId
 }
 
+// Socket Debug Component (inline)
+const SocketDebug = () => {
+  const socket = useSocket()
+  const [status, setStatus] = useState('unknown')
+  const [socketId, setSocketId] = useState('')
+
+  useEffect(() => {
+    if (!socket) {
+      setStatus('no-socket')
+      setSocketId('')
+      return
+    }
+
+    const updateStatus = () => {
+      setStatus(socket.connected ? 'connected' : 'disconnected')
+      setSocketId(socket.id || '')
+    }
+
+    updateStatus()
+
+    socket.on('connect', updateStatus)
+    socket.on('disconnect', updateStatus)
+    socket.on('reconnect', updateStatus)
+
+    return () => {
+      socket.off('connect', updateStatus)
+      socket.off('disconnect', updateStatus)
+      socket.off('reconnect', updateStatus)
+    }
+  }, [socket])
+
+  const statusColors = {
+    connected: 'text-green-600',
+    disconnected: 'text-red-600',
+    'no-socket': 'text-gray-600',
+    unknown: 'text-gray-400'
+  }
+
+  const statusLabels = {
+    connected: '✅ Connected',
+    disconnected: '❌ Disconnected',
+    'no-socket': '🚫 No Socket',
+    unknown: '⏳ Unknown'
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+      <div className={`w-2 h-2 rounded-full ${
+        status === 'connected' ? 'bg-green-500 animate-pulse' : 
+        status === 'disconnected' ? 'bg-red-500' : 'bg-gray-400'
+      }`} />
+      <span className={statusColors[status as keyof typeof statusColors] || 'text-gray-400'}>
+        {statusLabels[status as keyof typeof statusLabels] || status}
+        {socketId && ` (${socketId.slice(0, 6)})`}
+      </span>
+    </div>
+  )
+}
+
 const Messenger = () => {
   const socket = useSocket()
+  const socketConnected = useSocketConnected()
   const location = useLocation()
   const { user } = useAuthStore()
   const [searchTerm, setSearchTerm] = useState('')
@@ -66,6 +127,7 @@ const Messenger = () => {
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations)
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(initialMessages)
   const contactChatId = (location.state as { contactChatId?: string | number } | null)?.contactChatId
+  const incomingCallPayload = (location.state as { incomingCall?: { conversationId: string; callerId: string; callerName: string; type: 'audio' | 'video'; sdp: string } } | null)?.incomingCall
   const [message, setMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -130,8 +192,6 @@ const Messenger = () => {
       console.warn('Could not clear legacy messenger storage', error)
     }
   }, [])
-
-  
 
   const isMyMessage = (msg: ChatMessage) => {
     if (msg.senderId) {
@@ -297,260 +357,127 @@ const Messenger = () => {
     })
   }
 
-  type CallState = 'idle' | 'calling' | 'ringing' | 'incoming' | 'connecting' | 'in-call'
+  const {
+    callStatus,
+    callType,
+    incomingOffer,
+    callPartner,
+    localStream,
+    remoteStream,
+    callError,
+    isMuted,
+    cameraEnabled,
+    startCall: startCallContext,
+    acceptCall: acceptCallContext,
+    rejectCall: rejectCallContext,
+    hangUp: hangUpContext,
+    toggleMute: toggleMuteContext,
+    toggleCamera: toggleCameraContext,
+  } = useCall()
 
-  const [callStatus, setCallStatus] = useState<CallState>('idle')
-  const [callType, setCallType] = useState<'audio' | 'video' | null>(null)
-  const [incomingOffer, setIncomingOffer] = useState<{
-    conversationId: string
-    callerId: string
-    callerName: string
-    type: 'audio' | 'video'
-    sdp: string
-  } | null>(null)
-  const [callPartner, setCallPartner] = useState<{ id: string; name: string } | null>(null)
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
-  const [callError, setCallError] = useState<string | null>(null)
-  const [isMuted, setIsMuted] = useState(false)
-  const [cameraEnabled, setCameraEnabled] = useState(true)
+  useEffect(() => {
+    if (incomingCallPayload && incomingCallPayload.conversationId && incomingOffer?.conversationId !== incomingCallPayload.conversationId) {
+      void acceptCallContext()
+    }
+  }, [acceptCallContext, incomingCallPayload, incomingOffer?.conversationId])
+
+  // FIXED: startCall with better socket handling
+  const startCall = (type: 'audio' | 'video') => {
+    if (!selectedChat) {
+      toast.error('Please select a chat before starting a call.')
+      return
+    }
+    if (!user?.id) {
+      toast.error('User information is still loading. Please wait a moment.')
+      return
+    }
+
+    console.log('🔍 Starting call - Socket status:', {
+      socketExists: !!socket,
+      socketConnected: socket?.connected,
+      socketConnectedState: socketConnected
+    })
+
+    // Check if socket exists
+    if (!socket) {
+      console.error('❌ Socket is null')
+      toast.error('Connection not available. Please refresh the page.')
+      return
+    }
+
+    // Check if socket is connected
+    if (!socket.connected) {
+      console.log('⚠️ Socket not connected, attempting to connect...')
+      toast.loading('Connecting to server...', { duration: 3000 })
+      
+      // Try to connect
+      socket.connect()
+      
+      // Wait for connection
+      let attempts = 0
+      const maxAttempts = 10
+      
+      const checkConnection = () => {
+        attempts++
+        console.log(`🔄 Connection attempt ${attempts}/${maxAttempts}, connected: ${socket.connected}`)
+        
+        if (socket.connected) {
+          toast.dismiss()
+          console.log('✅ Socket connected, starting call...')
+          startCallContext(type, selectedChatRoom, { 
+            id: selectedChat.id, 
+            name: selectedChat.name,
+            online: selectedChat.online 
+          })
+        } else if (attempts < maxAttempts) {
+          setTimeout(checkConnection, 1000)
+        } else {
+          toast.dismiss()
+          toast.error('Unable to connect to server. Please check your internet connection.')
+          console.error('❌ Socket connection failed after', maxAttempts, 'attempts')
+        }
+      }
+      checkConnection()
+      return
+    }
+
+    // Socket is connected, start call
+    console.log('✅ Socket connected, starting call immediately')
+    startCallContext(type, selectedChatRoom, { 
+      id: selectedChat.id, 
+      name: selectedChat.name,
+      online: selectedChat.online 
+    })
+  }
+
+  const acceptCall = () => {
+    if (!socketConnected) {
+      toast.error('Unable to accept the call until the socket connects.')
+      return
+    }
+
+    void acceptCallContext()
+  }
+
+  const rejectCall = () => {
+    rejectCallContext()
+  }
+
+  const hangUp = () => {
+    hangUpContext()
+  }
+
+  const toggleMute = () => {
+    toggleMuteContext()
+  }
+
+  const toggleCamera = () => {
+    toggleCameraContext()
+  }
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null)
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null)
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
-  const callTimerRef = useRef<number | null>(null)
-  const callStatusRef = useRef<CallState>('idle')
-  const callAnsweredRef = useRef(false)
-
-  const cleanupCall = () => {
-    clearCallTimeout()
-    callAnsweredRef.current = false
-    peerConnectionRef.current?.close()
-    peerConnectionRef.current = null
-
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop())
-    }
-
-    if (remoteStream) {
-      remoteStream.getTracks().forEach((track) => track.stop())
-    }
-
-    setLocalStream(null)
-    setRemoteStream(null)
-    setIncomingOffer(null)
-    setCallPartner(null)
-    setCallType(null)
-    setIsMuted(false)
-    setCameraEnabled(true)
-    setCallError(null)
-    updateCallStatus('idle')
-  }
-
-  const updateCallStatus = (status: CallState) => {
-    callStatusRef.current = status
-    setCallStatus(status)
-  }
-
-  const clearCallTimeout = () => {
-    if (callTimerRef.current) {
-      window.clearTimeout(callTimerRef.current)
-      callTimerRef.current = null
-    }
-  }
-
-  const setCallTimeout = () => {
-    clearCallTimeout()
-    callTimerRef.current = window.setTimeout(() => {
-      if (callStatusRef.current === 'in-call' || callStatusRef.current === 'idle' || callAnsweredRef.current) return
-      const conversationId = incomingOffer?.conversationId ?? selectedChatRoom
-      if (socket && conversationId) {
-        socket.emit('missed_call', { conversationId, type: callType ?? 'audio' })
-      }
-      toast.error(`Missed ${callType ?? 'call'}.`)
-      cleanupCall()
-    }, 25000)
-  }
-
-  const createPeerConnection = () => {
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    })
-
-    pc.onicecandidate = (event) => {
-      if (event.candidate && socket) {
-        socket.emit('ice_candidate', {
-          conversationId: selectedChatRoom,
-          candidate: event.candidate,
-          senderId: user?.id,
-        })
-      }
-    }
-
-    pc.ontrack = (event) => {
-      if (event.streams?.[0]) {
-        setRemoteStream(event.streams[0])
-        return
-      }
-
-      if (event.track) {
-        const stream = new MediaStream([event.track])
-        setRemoteStream(stream)
-      }
-    }
-
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'connected' || pc.connectionState === 'completed') {
-        // Clear any dialing/incoming timeout when the connection is established
-        clearCallTimeout()
-        updateCallStatus('in-call')
-      }
-
-      if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
-        cleanupCall()
-      }
-    }
-
-    // Some browsers/platforms signal readiness on the ICE connection state.
-    pc.oniceconnectionstatechange = () => {
-      try {
-        const iceState = (pc as any).iceConnectionState || (pc as RTCPeerConnection).iceConnectionState
-        if (iceState === 'connected' || iceState === 'completed') {
-          clearCallTimeout()
-          updateCallStatus('in-call')
-        }
-
-        if (['disconnected', 'failed', 'closed'].includes(iceState)) {
-          cleanupCall()
-        }
-      } catch (err) {
-        // ignore
-      }
-    }
-
-    return pc
-  }
-
-  const requestMedia = async (type: 'audio' | 'video') => {
-    return navigator.mediaDevices.getUserMedia(
-      type === 'audio'
-        ? { audio: true }
-        : { audio: true, video: true }
-    )
-  }
-
-  const startCall = async (type: 'audio' | 'video') => {
-    if (!socket || !selectedChat) return
-
-    const nextStatus = selectedChat.online ? 'ringing' : 'calling'
-    callAnsweredRef.current = false
-    updateCallStatus(nextStatus)
-    setCallType(type)
-    setCallPartner({ id: selectedChat.id, name: selectedChat.name })
-
-    try {
-      const stream = await requestMedia(type)
-      setLocalStream(stream)
-
-      const pc = createPeerConnection()
-      peerConnectionRef.current = pc
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream))
-
-      const offer = await pc.createOffer()
-      await pc.setLocalDescription(offer)
-
-      socket.emit('offer', {
-        conversationId: selectedChatRoom,
-        callerId: user?.id ?? '',
-        callerName: user?.name ?? 'Unknown user',
-        type,
-        sdp: offer.sdp ?? '',
-      })
-      // Start a longer dialing timeout for mobile/webview connectivity
-      clearCallTimeout()
-      callTimerRef.current = window.setTimeout(() => {
-        if (callStatusRef.current === 'in-call' || callStatusRef.current === 'idle') return
-        const conversationId = selectedChatRoom
-        if (socket && conversationId) {
-          socket.emit('missed_call', { conversationId, type: callType ?? 'audio' })
-        }
-        toast.error(`Missed ${callType ?? 'call'}.`)
-        cleanupCall()
-      }, 60000)
-    } catch (error) {
-      console.error('Start call failed:', error)
-      setCallError('Could not access microphone or camera.')
-      cleanupCall()
-    }
-  }
-
-  const acceptCall = async () => {
-    if (!socket || !incomingOffer) return
-
-    callAnsweredRef.current = true
-    updateCallStatus('connecting')
-    setCallType(incomingOffer.type)
-    setCallPartner({ id: incomingOffer.callerId, name: incomingOffer.callerName })
-
-    try {
-      const stream = await requestMedia(incomingOffer.type)
-      setLocalStream(stream)
-
-      const pc = createPeerConnection()
-      peerConnectionRef.current = pc
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream))
-
-      await pc.setRemoteDescription({ type: 'offer', sdp: incomingOffer.sdp })
-      const answer = await pc.createAnswer()
-      await pc.setLocalDescription(answer)
-
-      socket.emit('answer', {
-        conversationId: incomingOffer.conversationId,
-        answer: answer.sdp ?? '',
-      })
-
-      clearCallTimeout()
-
-      setIncomingOffer(null)
-    } catch (error) {
-      console.error('Accept call failed:', error)
-      setCallError('Could not access microphone or camera.')
-      cleanupCall()
-    }
-  }
-
-  const rejectCall = () => {
-    clearCallTimeout()
-    if (socket && incomingOffer) {
-      socket.emit('call_rejected', { conversationId: incomingOffer.conversationId })
-    }
-    cleanupCall()
-  }
-
-  const hangUp = () => {
-    clearCallTimeout()
-    if (socket && selectedChatRoom) {
-      socket.emit('end_call', { conversationId: selectedChatRoom })
-    }
-    cleanupCall()
-  }
-
-  const toggleMute = () => {
-    if (!localStream) return
-    localStream.getAudioTracks().forEach((track) => {
-      track.enabled = !track.enabled
-    })
-    setIsMuted((prev) => !prev)
-  }
-
-  const toggleCamera = () => {
-    if (!localStream) return
-    localStream.getVideoTracks().forEach((track) => {
-      track.enabled = !track.enabled
-    })
-    setCameraEnabled((prev) => !prev)
-  }
 
   const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -618,6 +545,30 @@ const Messenger = () => {
   }, [contactChatId, conversations])
 
   useEffect(() => {
+    if (!incomingCallPayload?.callerId || !user?.id) return
+
+    const callerId = incomingCallPayload.callerId
+    const existingChat = conversations.find((conv) => conv.id === callerId)
+    if (!existingChat) {
+      setConversations((prev) => [
+        ...prev,
+        {
+          id: callerId,
+          name: incomingCallPayload.callerName,
+          phone: '',
+          lastMessage: 'Incoming call',
+          time: '',
+          unread: 0,
+          online: true,
+          avatar: '',
+        },
+      ])
+    }
+
+    setSelectedChatId(callerId)
+  }, [incomingCallPayload, user?.id, conversations])
+
+  useEffect(() => {
     if (!selectedChatId || !user?.id) return
 
     const loadHistory = async () => {
@@ -679,108 +630,6 @@ const Messenger = () => {
       }
     }
   }, [remoteStream])
-
-  // Global call event listeners (registered once, independent of selectedChatId)
-  useEffect(() => {
-    if (!socket) return
-
-    const handleOfferEvent = (payload: {
-      conversationId: string
-      callerId: string
-      callerName: string
-      type: 'audio' | 'video'
-      sdp: string
-    }) => {
-      if (payload.callerId === user?.id) return
-      if (callStatus === 'in-call' || callStatus === 'connecting') return
-
-      // Auto-select the conversation if not already selected
-      if (selectedChatId !== payload.conversationId.split('_').find((id) => id !== user?.id)) {
-        const callFromId = payload.conversationId.split('_').find((id) => id !== user?.id) || ''
-        if (callFromId && conversations.find((c) => c.id === callFromId)) {
-          setSelectedChatId(callFromId)
-        }
-      }
-
-      setIncomingOffer(payload)
-      callAnsweredRef.current = false
-      updateCallStatus('incoming')
-      setCallType(payload.type)
-      setCallPartner({ id: payload.callerId, name: payload.callerName })
-      // Give the user up to 60s to accept the call on mobile
-      // (webview/network can delay signaling). Reset any previous timer.
-      clearCallTimeout()
-      callTimerRef.current = window.setTimeout(() => {
-        if (callStatusRef.current === 'in-call' || callStatusRef.current === 'idle') return
-        const conversationId = incomingOffer?.conversationId ?? selectedChatRoom
-        if (socket && conversationId) {
-          socket.emit('missed_call', { conversationId, type: callType ?? 'audio' })
-        }
-        toast.error(`Missed ${callType ?? 'call'}.`)
-        cleanupCall()
-      }, 60000)
-    }
-
-    const handleAnswerEvent = async (payload: { conversationId: string; answer: string }) => {
-      if (payload.conversationId !== selectedChatRoom) return
-      const pc = peerConnectionRef.current
-      if (!pc || !payload.answer) return
-      callAnsweredRef.current = true
-      clearCallTimeout()
-      updateCallStatus('in-call')
-      await pc.setRemoteDescription({ type: 'answer', sdp: payload.answer })
-    }
-
-    const handleIceCandidateEvent = async (payload: { conversationId: string; candidate: RTCIceCandidateInit }) => {
-      if (payload.conversationId !== selectedChatRoom) return
-      const pc = peerConnectionRef.current
-      if (!pc || !payload.candidate) return
-      try {
-        await pc.addIceCandidate(payload.candidate)
-      } catch (error) {
-        console.warn('Failed to add ICE candidate', error)
-      }
-    }
-
-    const handleCallRejectedEvent = (payload: { conversationId: string }) => {
-      if (payload.conversationId !== selectedChatRoom) return
-      if (callStatus === 'calling' || callStatus === 'connecting') {
-        toast.error('Call rejected by the other user.')
-        cleanupCall()
-      }
-    }
-
-    const handleMissedCallEvent = (payload: { conversationId: string; type: 'audio' | 'video' }) => {
-      if (payload.conversationId !== selectedChatRoom) return
-      if (callStatusRef.current === 'in-call' || callAnsweredRef.current) return
-      toast.error(`Missed ${payload.type} call.`)
-      cleanupCall()
-    }
-
-    const handleEndCallEvent = (payload: { conversationId: string }) => {
-      if (payload.conversationId !== selectedChatRoom) return
-      if (callStatus !== 'idle') {
-        toast('Call ended.')
-        cleanupCall()
-      }
-    }
-
-    socket.on('offer', handleOfferEvent)
-    socket.on('answer', handleAnswerEvent)
-    socket.on('ice_candidate', handleIceCandidateEvent)
-    socket.on('call_rejected', handleCallRejectedEvent)
-    socket.on('missed_call', handleMissedCallEvent)
-    socket.on('end_call', handleEndCallEvent)
-
-    return () => {
-      socket.off('offer', handleOfferEvent)
-      socket.off('answer', handleAnswerEvent)
-      socket.off('ice_candidate', handleIceCandidateEvent)
-      socket.off('call_rejected', handleCallRejectedEvent)
-      socket.off('missed_call', handleMissedCallEvent)
-      socket.off('end_call', handleEndCallEvent)
-    }
-  }, [socket, callStatus, user?.id, selectedChatRoom])
 
   useEffect(() => {
     if (!socket || !selectedChatId) return
@@ -868,7 +717,6 @@ const Messenger = () => {
     setShowChatOnMobile(true)
     updateConversation(conv.id, { unread: 0 })
 
-    // Mark chat conversation messages as read on the backend
     const markMessagesAsRead = async () => {
       try {
         console.log('Marking chat conversation as read...')
@@ -1160,10 +1008,6 @@ const Messenger = () => {
     setMessage('')
   }
 
-  const handleCall = () => {
-    // Deprecated for native audio/video calling.
-  }
-
   return (
     <div className="h-[calc(100vh-4rem)] bg-gray-100">
       <div className="mx-auto h-full w-full max-w-7xl px-0 md:px-4">
@@ -1247,11 +1091,22 @@ const Messenger = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" onClick={() => startCall('audio')}>
+                <div className="flex items-center gap-2">
+                  <SocketDebug />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => startCall('audio')}
+                    disabled={!socketConnected || !selectedChat || !user?.id}
+                  >
                     <Phone className="w-5 h-5" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => startCall('video')}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => startCall('video')}
+                    disabled={!socketConnected || !selectedChat || !user?.id}
+                  >
                     <Video className="w-5 h-5" />
                   </Button>
                   <Button variant="ghost" size="icon">

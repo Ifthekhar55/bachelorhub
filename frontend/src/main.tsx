@@ -10,6 +10,7 @@ import './118n'
 import App from './App'
 import { AuthProvider } from './contexts/AuthContext'
 import { SocketProvider } from './contexts/SocketContext'
+import { CallProvider } from './contexts/CallContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,8 +27,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <HashRouter>
         <AuthProvider>
           <SocketProvider>
-            <App />
-            <Toaster position="top-right" />
+            <CallProvider>
+              <App />
+              <Toaster position="top-right" />
+            </CallProvider>
           </SocketProvider>
         </AuthProvider>
       </HashRouter>

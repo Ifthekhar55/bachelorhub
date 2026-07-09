@@ -18,6 +18,7 @@ import { Input } from '../../components/ui/input';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { buildShareUrl } from '../../utils/share';
 
 interface UsedItemDetail {
   id: string;
@@ -477,10 +478,11 @@ const UsedItemDetail = () => {
               {/* Share */}
               <div className="mt-4 pt-4 border-t">
                 <Button variant="ghost" className="w-full" onClick={() => {
+                  const shareUrl = buildShareUrl(`/used-item/${item.id}`)
                   navigator.share?.({
                     title: item.title,
                     text: `Check out this item for ৳${item.price}`,
-                    url: window.location.href,
+                    url: shareUrl,
                   });
                 }}>
                   <Share2 className="w-4 h-4 mr-2" />
