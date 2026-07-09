@@ -10,7 +10,6 @@ import {
   Bell,
   User,
   LogOut,
-  Globe,
   Menu,
   X,
   PlusCircle,
@@ -51,7 +50,7 @@ const Navbar = () => {
   const { unreadCount } = useNotificationStore()
   const socket = useSocket()
   const navigate = useNavigate()
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
 
   // Fetch unread message count
   useEffect(() => {
@@ -108,12 +107,6 @@ const Navbar = () => {
       document.documentElement.classList.add('dark')
     }
   }, [])
-
-  const toggleLanguage = () => {
-    const newLang = i18n.language === 'en' ? 'bn' : 'en'
-    i18n.changeLanguage(newLang)
-    localStorage.setItem('language', newLang)
-  }
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode)
@@ -207,18 +200,6 @@ const Navbar = () => {
                   className="rounded-full w-10 h-10"
                 >
                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                </Button>
-              </div>
-
-              <div className="hidden md:inline-flex">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleLanguage}
-                  className="flex items-center space-x-1 rounded-full h-10 px-4 w-auto"
-                >
-                  <Globe className="w-5 h-5" />
-                  <span className="text-sm font-medium">{i18n.language === 'en' ? 'বাংলা' : 'English'}</span>
                 </Button>
               </div>
 
@@ -446,17 +427,6 @@ const Navbar = () => {
                     <span className="font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toggleLanguage()
-                      setMobileMenuOpen(false)
-                    }}
-                    className="w-full mt-2 flex items-center gap-3 px-3 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  >
-                    <Globe className="w-5 h-5" />
-                    <span className="font-medium">{i18n.language === 'en' ? 'বাংলা' : 'English'}</span>
-                  </button>
                 </div>
               </div>
             </motion.div>
