@@ -39,6 +39,7 @@ const initialMessages: Record<string, ChatMessage[]> = {}
 const SELECTED_CHAT_KEY = 'messenger_selected_chat_v1'
 const ATTACHMENT_CACHE_KEY = 'messenger_attachment_urls_v2'
 const NICKNAMES_STORAGE_KEY = 'messenger_nicknames_v1'
+const DELETED_CONVERSATIONS_STORAGE_KEY = 'messenger_deleted_conversations_v1'
 
 const emojiOptions = ['😀', '😂', '😍', '👍', '🎉', '❤️', '😢', '🤔', '🙌']
 
@@ -63,6 +64,28 @@ const saveStoredNicknames = (nicknames: Record<string, string>) => {
     window.localStorage.setItem(NICKNAMES_STORAGE_KEY, JSON.stringify(nicknames))
   } catch (error) {
     console.warn('Failed to save messenger nicknames', error)
+  }
+}
+
+const getDeletedConversations = (): string[] => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const stored = window.localStorage.getItem(DELETED_CONVERSATIONS_STORAGE_KEY)
+    return stored ? JSON.parse(stored) : []
+  } catch (error) {
+    console.warn('Failed to read deleted messenger conversations', error)
+    return []
+  }
+}
+
+const saveDeletedConversations = (deletedIds: string[]) => {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(DELETED_CONVERSATIONS_STORAGE_KEY, JSON.stringify(deletedIds))
+  } catch (error) {
+    console.warn('Failed to save deleted messenger conversations', error)
   }
 }
 
@@ -343,7 +366,8 @@ const Messenger = () => {
       try {
         const response = await api.get('/api/users/all')
         const users: Array<{ id: string; name: string; phone: string; profilePhoto?: string; email: string }> = response.data.users
-        const filteredUsers = users.filter((contact) => contact.id !== user.id)
+        const deletedConversationIds = getDeletedConversations()
+        const filteredUsers = users.filter((contact) => contact.id !== user.id && !deletedConversationIds.includes(contact.id))
         const storedNicknames = getStoredNicknames()
         const newConversations = filteredUsers.map((contact) => ({
           id: contact.id,
@@ -563,6 +587,11 @@ const Messenger = () => {
     const nextConversations = conversations.filter((conv) => conv.id !== selectedChat.id)
     const nextSelectedChatId = nextConversations[0]?.id ?? ''
     const storedNicknames = getStoredNicknames()
+    const deletedConversationIds = getDeletedConversations()
+    if (!deletedConversationIds.includes(selectedChat.id)) {
+      deletedConversationIds.push(selectedChat.id)
+      saveDeletedConversations(deletedConversationIds)
+    }
     delete storedNicknames[selectedChat.id]
     saveStoredNicknames(storedNicknames)
 
