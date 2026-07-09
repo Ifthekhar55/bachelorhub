@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Search, Send, Phone, Video, MoreVertical, Smile, Paperclip, Image, Mic, Check, CheckCheck, MessageCircle, Copy, Trash2, ExternalLink, Download, ArrowLeft } from 'lucide-react'
+import { Search, Send, MoreVertical, Smile, Paperclip, Image, Mic, Check, CheckCheck, MessageCircle, Copy, Trash2, ExternalLink, Download, ArrowLeft } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog'
 import { useSocket, useSocketConnected } from '../../contexts/SocketContext'
-import { useCall } from '../../contexts/CallContext'
 import { useAuthStore } from '../../store/authStore'
 import api from '../../services/api'
 import { toast } from 'react-hot-toast'
@@ -127,7 +126,6 @@ const Messenger = () => {
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations)
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(initialMessages)
   const contactChatId = (location.state as { contactChatId?: string | number } | null)?.contactChatId
-  const incomingCallPayload = (location.state as { incomingCall?: { conversationId: string; callerId: string; callerName: string; type: 'audio' | 'video'; sdp: string } } | null)?.incomingCall
   const [message, setMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -357,128 +355,6 @@ const Messenger = () => {
     })
   }
 
-  const {
-    callStatus,
-    callType,
-    incomingOffer,
-    callPartner,
-    localStream,
-    remoteStream,
-    callError,
-    isMuted,
-    cameraEnabled,
-    startCall: startCallContext,
-    acceptCall: acceptCallContext,
-    rejectCall: rejectCallContext,
-    hangUp: hangUpContext,
-    toggleMute: toggleMuteContext,
-    toggleCamera: toggleCameraContext,
-  } = useCall()
-
-  useEffect(() => {
-    if (incomingCallPayload && incomingCallPayload.conversationId && incomingOffer?.conversationId !== incomingCallPayload.conversationId) {
-      void acceptCallContext()
-    }
-  }, [acceptCallContext, incomingCallPayload, incomingOffer?.conversationId])
-
-  // FIXED: startCall with better socket handling
-  const startCall = (type: 'audio' | 'video') => {
-    if (!selectedChat) {
-      toast.error('Please select a chat before starting a call.')
-      return
-    }
-    if (!user?.id) {
-      toast.error('User information is still loading. Please wait a moment.')
-      return
-    }
-
-    console.log('🔍 Starting call - Socket status:', {
-      socketExists: !!socket,
-      socketConnected: socket?.connected,
-      socketConnectedState: socketConnected
-    })
-
-    // Check if socket exists
-    if (!socket) {
-      console.error('❌ Socket is null')
-      toast.error('Connection not available. Please refresh the page.')
-      return
-    }
-
-    // Check if socket is connected
-    if (!socket.connected) {
-      console.log('⚠️ Socket not connected, attempting to connect...')
-      toast.loading('Connecting to server...', { duration: 3000 })
-      
-      // Try to connect
-      socket.connect()
-      
-      // Wait for connection
-      let attempts = 0
-      const maxAttempts = 10
-      
-      const checkConnection = () => {
-        attempts++
-        console.log(`🔄 Connection attempt ${attempts}/${maxAttempts}, connected: ${socket.connected}`)
-        
-        if (socket.connected) {
-          toast.dismiss()
-          console.log('✅ Socket connected, starting call...')
-          startCallContext(type, selectedChatRoom, { 
-            id: selectedChat.id, 
-            name: selectedChat.name,
-            online: selectedChat.online 
-          })
-        } else if (attempts < maxAttempts) {
-          setTimeout(checkConnection, 1000)
-        } else {
-          toast.dismiss()
-          toast.error('Unable to connect to server. Please check your internet connection.')
-          console.error('❌ Socket connection failed after', maxAttempts, 'attempts')
-        }
-      }
-      checkConnection()
-      return
-    }
-
-    // Socket is connected, start call
-    console.log('✅ Socket connected, starting call immediately')
-    startCallContext(type, selectedChatRoom, { 
-      id: selectedChat.id, 
-      name: selectedChat.name,
-      online: selectedChat.online 
-    })
-  }
-
-  const acceptCall = () => {
-    if (!socketConnected) {
-      toast.error('Unable to accept the call until the socket connects.')
-      return
-    }
-
-    void acceptCallContext()
-  }
-
-  const rejectCall = () => {
-    rejectCallContext()
-  }
-
-  const hangUp = () => {
-    hangUpContext()
-  }
-
-  const toggleMute = () => {
-    toggleMuteContext()
-  }
-
-  const toggleCamera = () => {
-    toggleCameraContext()
-  }
-
-  const localVideoRef = useRef<HTMLVideoElement | null>(null)
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null)
-  const remoteAudioRef = useRef<HTMLAudioElement | null>(null)
-
   const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -545,30 +421,6 @@ const Messenger = () => {
   }, [contactChatId, conversations])
 
   useEffect(() => {
-    if (!incomingCallPayload?.callerId || !user?.id) return
-
-    const callerId = incomingCallPayload.callerId
-    const existingChat = conversations.find((conv) => conv.id === callerId)
-    if (!existingChat) {
-      setConversations((prev) => [
-        ...prev,
-        {
-          id: callerId,
-          name: incomingCallPayload.callerName,
-          phone: '',
-          lastMessage: 'Incoming call',
-          time: '',
-          unread: 0,
-          online: true,
-          avatar: '',
-        },
-      ])
-    }
-
-    setSelectedChatId(callerId)
-  }, [incomingCallPayload, user?.id, conversations])
-
-  useEffect(() => {
     if (!selectedChatId || !user?.id) return
 
     const loadHistory = async () => {
@@ -608,28 +460,6 @@ const Messenger = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [currentMessages, selectedChatId])
-
-  useEffect(() => {
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = localStream
-    }
-  }, [localStream])
-
-  useEffect(() => {
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = remoteStream
-    }
-    if (remoteAudioRef.current) {
-      remoteAudioRef.current.srcObject = remoteStream
-      remoteAudioRef.current.muted = false
-      const playPromise = remoteAudioRef.current.play()
-      if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.warn('Remote audio autoplay failed:', error)
-        })
-      }
-    }
-  }, [remoteStream])
 
   useEffect(() => {
     if (!socket || !selectedChatId) return
@@ -1093,98 +923,11 @@ const Messenger = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <SocketDebug />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => startCall('audio')}
-                    disabled={!socketConnected || !selectedChat || !user?.id}
-                  >
-                    <Phone className="w-5 h-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => startCall('video')}
-                    disabled={!socketConnected || !selectedChat || !user?.id}
-                  >
-                    <Video className="w-5 h-5" />
-                  </Button>
                   <Button variant="ghost" size="icon">
                     <MoreVertical className="w-5 h-5" />
                   </Button>
                 </div>
               </div>
-
-              {callStatus !== 'idle' && (
-                <div className="p-4 border-b bg-slate-50">
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold">
-                          {callStatus === 'incoming' && `Incoming ${callType === 'video' ? 'video' : 'audio'} call from ${callPartner?.name ?? 'Caller'}`}
-                          {callStatus === 'ringing' && `Ringing ${callPartner?.name ?? 'contact'}...`}
-                          {callStatus === 'calling' && `Calling ${callPartner?.name ?? 'contact'}...`}
-                          {callStatus === 'connecting' && 'Connecting call...'}
-                          {callStatus === 'in-call' && `${callType === 'video' ? 'Video' : 'Audio'} call active`}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {callType === 'video' ? 'Video call' : 'Audio call'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {callStatus === 'incoming' ? (
-                          <>
-                            <Button onClick={acceptCall} className="bg-green-600 hover:bg-green-700">
-                              Receive
-                            </Button>
-                            <Button onClick={rejectCall} className="bg-red-600 hover:bg-red-700">
-                              Cancel
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            {callStatus === 'in-call' && (
-                              <>
-                                <Button onClick={toggleMute} className="bg-gray-200 hover:bg-gray-300">
-                                  {isMuted ? 'Unmute' : 'Mute'}
-                                </Button>
-                                {callType === 'video' && (
-                                  <Button onClick={toggleCamera} className="bg-gray-200 hover:bg-gray-300">
-                                    {cameraEnabled ? 'Hide camera' : 'Show camera'}
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                            <Button onClick={hangUp} className="bg-red-600 hover:bg-red-700">
-                              End Call
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {(callType === 'video' || callStatus === 'incoming' || callType === 'audio') && (
-                      <div className={`grid grid-cols-1 ${callType === 'video' ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-3`}>
-                        <div className="p-3 bg-black rounded-lg text-white">
-                          <p className="text-xs mb-2">Your video</p>
-                          <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-48 rounded-lg bg-black object-cover" />
-                        </div>
-                        <div className="p-3 bg-black rounded-lg text-white">
-                          <p className="text-xs mb-2">{callPartner?.name ?? 'Remote'}</p>
-                          {callType === 'video' ? (
-                            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-48 rounded-lg bg-black object-cover" />
-                          ) : (
-                            <div className="w-full h-48 rounded-lg bg-black flex items-center justify-center text-white text-sm">
-                              Audio call active
-                            </div>
-                          )}
-                          <audio ref={remoteAudioRef} autoPlay hidden />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">

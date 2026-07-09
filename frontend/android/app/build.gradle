@@ -12,9 +12,6 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
-        // Add this for WebRTC support
-        multiDexEnabled true
-        
         // Manifest placeholders for audio
         manifestPlaceholders = [
             'supportsRtl': "true"
@@ -36,21 +33,6 @@ android {
         }
     }
     
-    // Add packaging options for WebRTC libraries
-    packagingOptions {
-        pickFirst 'lib/armeabi-v7a/libjingle_peerconnection_so.so'
-        pickFirst 'lib/arm64-v8a/libjingle_peerconnection_so.so'
-        pickFirst 'lib/x86/libjingle_peerconnection_so.so'
-        pickFirst 'lib/x86_64/libjingle_peerconnection_so.so'
-        pickFirst 'lib/*/libc++_shared.so'
-        pickFirst 'lib/*/libjingle_peerconnection_so.so'
-        pickFirst 'lib/*/libvpx.so'
-        pickFirst 'lib/*/libwebrtc.so'
-        exclude 'META-INF/DEPENDENCIES'
-        exclude 'META-INF/LICENSE'
-        exclude 'META-INF/NOTICE'
-    }
-    
     // Enable Java 8 features
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -66,9 +48,6 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
-    
-    // WebRTC support
-    implementation 'io.github.webrtc-sdk:android:125.6422.06.1'
     
     // Audio/Video support
     implementation 'androidx.media:media:1.6.0'

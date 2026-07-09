@@ -8,7 +8,6 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url 'https://jitpack.io' }
-        maven { url "https://dl.cloudsmith.io/public/comms-hq/webrtc/maven/" }
         flatDir {
             dirs 'capacitor-cordova-android-plugins/src/main/libs', 'app/libs'
         }
