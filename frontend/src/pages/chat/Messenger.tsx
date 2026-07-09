@@ -47,14 +47,28 @@ const PLACEHOLDER_USER_ID = 'me'
 
 const getStoredNicknames = (): Record<string, string> => {
   if (typeof window === 'undefined') return {}
-
   try {
     const stored = window.localStorage.getItem(NICKNAMES_STORAGE_KEY)
     return stored ? JSON.parse(stored) : {}
   } catch (error) {
-    console.warn('Failed to read stored messenger nicknames', error)
+    console.warn('Failed to parse stored nicknames', error)
     return {}
   }
+}
+
+// Convert ISO timestamp or time string to formatted local time
+const formatMessageTime = (time: string): string => {
+  // If it's an ISO string (contains 'T'), parse and convert to local time
+  if (time.includes('T')) {
+    try {
+      return new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    } catch (error) {
+      console.warn('Failed to parse time:', time, error)
+      return time
+    }
+  }
+  // Otherwise return as-is (already formatted local time string)
+  return time
 }
 
 const saveStoredNicknames = (nicknames: Record<string, string>) => {
@@ -1161,7 +1175,7 @@ const Messenger = () => {
                         <div className={`flex items-center gap-1 mt-1 text-xs ${
                           isMine ? 'text-blue-200' : 'text-gray-500'
                         }`}>
-                          <span>{msg.time}</span>
+                          <span>{formatMessageTime(msg.time)}</span>
                           {isMine && (
                             msg.status === 'read' ? (
                               <CheckCheck className="w-3 h-3" />

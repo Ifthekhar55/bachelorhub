@@ -309,7 +309,7 @@ const formatDbMessage = (message: any): ChatMessage => ({
   type: message.type ?? 'text',
   url: message.url ?? undefined,
   filename: message.filename ?? undefined,
-  time: message.createdAt ? new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+  time: message.createdAt ? new Date(message.createdAt).toISOString() : '',
   status: message.isRead ? 'read' : 'sent',
 })
 
@@ -401,7 +401,7 @@ io.on('connection', (socket) => {
         type: savedMessage.type ?? 'text',
         url: savedMessage.url ?? undefined,
         filename: savedMessage.filename ?? undefined,
-        time: new Date(savedMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: new Date(savedMessage.createdAt).toISOString(),
         status: savedMessage.isRead ? 'read' : 'sent',
       }
 
