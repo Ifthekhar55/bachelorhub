@@ -38,10 +38,33 @@ const initialConversations: Conversation[] = []
 const initialMessages: Record<string, ChatMessage[]> = {}
 const SELECTED_CHAT_KEY = 'messenger_selected_chat_v1'
 const ATTACHMENT_CACHE_KEY = 'messenger_attachment_urls_v2'
+const NICKNAMES_STORAGE_KEY = 'messenger_nicknames_v1'
 
 const emojiOptions = ['😀', '😂', '😍', '👍', '🎉', '❤️', '😢', '🤔', '🙌']
 
 const PLACEHOLDER_USER_ID = 'me'
+
+const getStoredNicknames = (): Record<string, string> => {
+  if (typeof window === 'undefined') return {}
+
+  try {
+    const stored = window.localStorage.getItem(NICKNAMES_STORAGE_KEY)
+    return stored ? JSON.parse(stored) : {}
+  } catch (error) {
+    console.warn('Failed to read stored messenger nicknames', error)
+    return {}
+  }
+}
+
+const saveStoredNicknames = (nicknames: Record<string, string>) => {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(NICKNAMES_STORAGE_KEY, JSON.stringify(nicknames))
+  } catch (error) {
+    console.warn('Failed to save messenger nicknames', error)
+  }
+}
 
 const getConversationRoomId = (userId: string | null | undefined, otherUserId: string) => {
   if (!otherUserId) return userId ?? PLACEHOLDER_USER_ID
@@ -321,9 +344,10 @@ const Messenger = () => {
         const response = await api.get('/api/users/all')
         const users: Array<{ id: string; name: string; phone: string; profilePhoto?: string; email: string }> = response.data.users
         const filteredUsers = users.filter((contact) => contact.id !== user.id)
+        const storedNicknames = getStoredNicknames()
         const newConversations = filteredUsers.map((contact) => ({
           id: contact.id,
-          name: contact.name,
+          name: storedNicknames[contact.id] || contact.name,
           phone: contact.phone,
           lastMessage: 'Start a conversation',
           time: '',
@@ -482,7 +506,17 @@ const Messenger = () => {
   )
 
   const updateConversation = (id: string, update: Partial<Conversation>) => {
-    setConversations((prev) => prev.map((conv) => (conv.id === id ? { ...conv, ...update } : conv)))
+    setConversations((prev) => {
+      const nextConversations = prev.map((conv) => (conv.id === id ? { ...conv, ...update } : conv))
+
+      if (update.name !== undefined) {
+        const storedNicknames = getStoredNicknames()
+        storedNicknames[id] = update.name
+        saveStoredNicknames(storedNicknames)
+      }
+
+      return nextConversations
+    })
   }
 
   const handleSelectChat = (conv: Conversation) => {
@@ -528,6 +562,9 @@ const Messenger = () => {
 
     const nextConversations = conversations.filter((conv) => conv.id !== selectedChat.id)
     const nextSelectedChatId = nextConversations[0]?.id ?? ''
+    const storedNicknames = getStoredNicknames()
+    delete storedNicknames[selectedChat.id]
+    saveStoredNicknames(storedNicknames)
 
     setConversations(nextConversations)
     setSelectedChatId(nextSelectedChatId)
