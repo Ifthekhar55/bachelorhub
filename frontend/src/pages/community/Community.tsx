@@ -608,10 +608,10 @@ const Community = () => {
   }
 
   const handleSharePost = (platform: string, post: Post) => {
-    const text = `${post.title} - ${post.content}`
-    const shareUrl = buildShareUrl(`/community`)
-    const encodedText = encodeURIComponent(text)
+    const shareUrl = buildShareUrl(`/community/post/${post.id}`)
     const encodedUrl = encodeURIComponent(shareUrl)
+    const text = `Check out this community post: ${shareUrl}`
+    const encodedText = encodeURIComponent(text)
     const urls: Record<string, string> = {
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`,
       messenger: `https://www.messenger.com/share?link=${encodedUrl}&redirect_uri=${encodedUrl}`,
@@ -619,9 +619,13 @@ const Community = () => {
       telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`,
       clipboard: '',
     }
+
     if (platform === 'clipboard') {
-      navigator.clipboard.writeText(text).then(() => {
-        setShareStatus('Post copied to clipboard!')
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setShareStatus('Post link copied to clipboard!')
+        window.setTimeout(() => setShareStatus(null), 2500)
+      }).catch(() => {
+        setShareStatus('Unable to copy link')
         window.setTimeout(() => setShareStatus(null), 2500)
       })
     } else if (urls[platform]) {
