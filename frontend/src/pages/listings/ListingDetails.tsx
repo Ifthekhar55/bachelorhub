@@ -50,15 +50,13 @@ const ListingDetail = () => {
               : found.image
               ? [found.image]
               : [],
+          landlordId: found.landlordId,
           landlord: {
             name: found.landlord?.name ?? 'Unknown Host',
             email: found.landlord?.email ?? 'notprovided@example.com',
             phone: found.landlord?.phone ?? 'N/A',
             isVerified: found.landlord?.isVerified ?? false,
-            chatId:
-              found.landlord?.chatId ??
-              landlordChatIdMap[found.landlord?.name ?? 'Unknown Host'] ??
-              undefined,
+            chatId: found.landlord?.chatId,
           },
         })
 
@@ -88,7 +86,7 @@ const ListingDetail = () => {
   }
 
   const handleContact = () => {
-    const chatId = listing?.landlord?.chatId ?? null
+    const chatId = listing?.landlordId ?? listing?.landlord?.chatId ?? null
     if (chatId) {
       navigate('/messenger', {
         state: { contactChatId: chatId },
