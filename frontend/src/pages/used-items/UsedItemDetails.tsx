@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
-  MapPin, Clock, Heart, MessageCircle, Phone, Flag, 
+  MapPin, Clock, Heart, MessageCircle, Flag, 
   Share2, ChevronLeft, ChevronRight, Shield, Star, 
   CheckCircle, Zap, Truck, Home, Package, X,
   Send, Image, Navigation, DollarSign, TrendingDown
@@ -185,12 +185,6 @@ const UsedItemDetail = () => {
     }
   };
 
-  const handleCallSeller = () => {
-    if (item?.seller.phone) {
-      window.location.href = `tel:${item.seller.phone}`;
-    }
-  };
-
   const handleContactSeller = () => {
     if (!item?.seller.id) return;
     navigate('/messenger', { state: { contactChatId: item.seller.id } });
@@ -352,10 +346,6 @@ const UsedItemDetail = () => {
                           <MessageCircle className="w-4 h-4 mr-1" />
                           Message
                         </Button>
-                        <Button size="sm" variant="outline" onClick={handleCallSeller}>
-                          <Phone className="w-4 h-4 mr-1" />
-                          Call
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -445,15 +435,6 @@ const UsedItemDetail = () => {
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Contact Seller
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={handleCallSeller}
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Call {item.seller.phone}
                 </Button>
                 
                 <Button 

@@ -3,6 +3,7 @@ import { File as MulterFile } from 'multer';
 import { prisma } from '../prisma';
 import bcrypt from 'bcryptjs';
 import { cloudinaryService } from '../services/cloudinary.service';
+import { notificationService } from '../services/notification.service';
 
 const parseJsonField = <T>(value: string | null | undefined, fallback: T): T => {
   if (!value || typeof value !== 'string') {
@@ -371,7 +372,7 @@ export class UserController {
   getNotifications = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.userId;
-      const notifications = await prisma.notification.findMany({
+      let notifications = await prisma.notification.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         select: {
@@ -384,6 +385,10 @@ export class UserController {
           createdAt: true,
         },
       });
+
+      if (!notifications.length) {
+        notifications = await notificationService.seedNotificationsForUser(userId);
+      }
 
       res.json({ notifications });
     } catch (error) {

@@ -1,0 +1,1 @@
+class e{async startCall(a){return{success:!0,message:"Web fallback"}}async endCall(){return{success:!0}}async toggleMute(){return{muted:!1}}async toggleCamera(){return{cameraEnabled:!0}}async getPermissions(){return{camera:!0,microphone:!0}}async requestPermissions(){return{camera:!0,microphone:!0}}}const s=new e;export{e as CallPluginWeb,s as default};

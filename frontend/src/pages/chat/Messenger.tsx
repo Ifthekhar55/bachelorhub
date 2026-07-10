@@ -4,6 +4,7 @@ import { Search, Send, MoreVertical, Smile, Paperclip, Image, Mic, Check, CheckC
 import { Button } from '../../components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu'
 import { useSocket } from '../../contexts/SocketContext'
 import { useAuthStore } from '../../store/authStore'
 import api from '../../services/api'
@@ -136,7 +137,6 @@ const Messenger = () => {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
   const [editingText, setEditingText] = useState('')
-  const [showConversationMenu, setShowConversationMenu] = useState(false)
   const [showEditNicknameDialog, setShowEditNicknameDialog] = useState(false)
   const [nicknameDraft, setNicknameDraft] = useState('')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -609,7 +609,6 @@ const Messenger = () => {
   const openEditNicknameDialog = () => {
     if (!selectedChat) return
     setNicknameDraft(selectedChat.name)
-    setShowConversationMenu(false)
     setShowEditNicknameDialog(true)
   }
 
@@ -641,7 +640,6 @@ const Messenger = () => {
 
     setConversations(nextConversations)
     setSelectedChatId(nextSelectedChatId)
-    setShowConversationMenu(false)
     setMessages((prev) => {
       const nextMessages = { ...prev }
       delete nextMessages[selectedChatRoom]
@@ -1011,33 +1009,30 @@ const Messenger = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 relative">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowConversationMenu((prev) => !prev)}
-                    aria-label="Conversation actions"
-                  >
-                    <MoreVertical className="w-5 h-5" />
-                  </Button>
-                  {showConversationMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-48 rounded-lg border bg-white shadow-lg z-20">
-                      <button
+                <div className="flex items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Conversation actions"
                         type="button"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
-                        onClick={openEditNicknameDialog}
                       >
+                        <MoreVertical className="w-5 h-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" sideOffset={8} className="w-48">
+                      <DropdownMenuItem onSelect={openEditNicknameDialog} className="cursor-pointer">
                         Edit Nickname
-                      </button>
-                      <button
-                        type="button"
-                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                        onClick={handleDeleteConversation}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={handleDeleteConversation}
+                        className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
                       >
                         Delete conversation
-                      </button>
-                    </div>
-                  )}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 

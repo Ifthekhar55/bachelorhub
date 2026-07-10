@@ -1,7 +1,7 @@
 {
   "appId": "com.bachelorhub.app",
   "appName": "BachelorHub",
-  "webDir": "dist",
+  "webDir": "www",
   "android": {
     "allowMixedContent": true,
     "webContentsDebuggingEnabled": true,
