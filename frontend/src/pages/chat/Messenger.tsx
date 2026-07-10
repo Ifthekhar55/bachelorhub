@@ -373,6 +373,36 @@ const Messenger = () => {
     })
   }
 
+  // Handle contact restoration when clicking "Contact Landlord" on a deleted conversation
+  useEffect(() => {
+    if (!contactChatId || typeof window === 'undefined') return
+    
+    const chatId = String(contactChatId)
+    const deletedConversationIds = getDeletedConversations()
+    
+    // If this conversation was deleted, restore it
+    if (deletedConversationIds.includes(chatId)) {
+      // Remove from deleted list
+      const updatedDeletedIds = deletedConversationIds.filter((id) => id !== chatId)
+      saveDeletedConversations(updatedDeletedIds)
+      
+      // Clear old messages for this conversation
+      setMessages((prev) => {
+        const nextMessages = { ...prev }
+        const roomId = getConversationRoomId(user?.id, chatId)
+        delete nextMessages[roomId]
+        return nextMessages
+      })
+      
+      // Clear nickname for this conversation
+      const storedNicknames = getStoredNicknames()
+      if (storedNicknames[chatId]) {
+        delete storedNicknames[chatId]
+        saveStoredNicknames(storedNicknames)
+      }
+    }
+  }, [contactChatId, user?.id])
+
   useEffect(() => {
     if (!user?.id) return
 
@@ -407,7 +437,7 @@ const Messenger = () => {
     }
 
     fetchUsers()
-  }, [user?.id])
+  }, [user?.id, contactChatId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
