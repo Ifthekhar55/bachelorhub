@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../prisma';
+import { notificationService } from '../services/notification.service';
 
 export class CommunityController {
   getPosts = async (req: Request, res: Response) => {
@@ -162,10 +163,35 @@ export class CommunityController {
           prisma.communityPost.update({ where: { id: String(postId) }, data: { likes: { decrement: 1 } } }),
         ]);
       } else {
+        const post = await prisma.communityPost.findUnique({
+          where: { id: String(postId) },
+          select: { id: true, authorId: true },
+        });
+
         await prisma.$transaction([
           prisma.communityPostLike.create({ data: { postId: String(postId), userId } }),
           prisma.communityPost.update({ where: { id: String(postId) }, data: { likes: { increment: 1 } } }),
         ]);
+
+        if (post?.authorId && String(post.authorId) !== String(userId)) {
+          const liker = await prisma.user.findUnique({
+            where: { id: String(userId) },
+            select: { name: true },
+          });
+
+          await notificationService.createNotification({
+            userId: post.authorId,
+            type: 'like',
+            title: 'New like on your post',
+            body: `${liker?.name || 'Someone'} liked your post.`,
+            data: {
+              source: 'community-like',
+              postId: String(postId),
+              actorId: userId,
+              actorName: liker?.name || 'Someone',
+            },
+          });
+        }
       }
 
       const updatedPost = await prisma.communityPost.findUnique({
@@ -197,6 +223,15 @@ export class CommunityController {
         return res.status(400).json({ error: 'Comment content is required' });
       }
 
+      const post = await prisma.communityPost.findUnique({
+        where: { id: String(postId) },
+        select: { id: true, authorId: true, author: true },
+      });
+
+      if (!post) {
+        return res.status(404).json({ error: 'Post not found' });
+      }
+
       const comment = await prisma.communityComment.create({
         data: {
           id: uuidv4(),
@@ -212,6 +247,23 @@ export class CommunityController {
         where: { id: String(postId) },
         data: { comments: { increment: 1 } },
       });
+
+      if (post.authorId && String(post.authorId) !== String(authorId)) {
+        const actorName = author?.trim() || 'Someone';
+        await notificationService.createNotification({
+          userId: post.authorId,
+          type: 'comment',
+          title: 'New comment on your post',
+          body: `${actorName} commented on your post.`,
+          data: {
+            source: 'community-comment',
+            postId: String(postId),
+            commentId: comment.id,
+            actorId: authorId ?? 'anonymous',
+            actorName,
+          },
+        });
+      }
 
       const commentWithLikes = await prisma.communityComment.findUnique({
         where: { id: comment.id },
