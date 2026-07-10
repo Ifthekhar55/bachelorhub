@@ -3,7 +3,6 @@ import { File as MulterFile } from 'multer';
 import { prisma } from '../prisma';
 import bcrypt from 'bcryptjs';
 import { cloudinaryService } from '../services/cloudinary.service';
-import { notificationService } from '../services/notification.service';
 
 const parseJsonField = <T>(value: string | null | undefined, fallback: T): T => {
   if (!value || typeof value !== 'string') {
@@ -372,6 +371,64 @@ export class UserController {
   getNotifications = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.userId;
+      const sampleTitles = [
+        'Someone reviewed your profile',
+        'Your average rating changed',
+        'Blood request matches your blood group',
+        'Someone liked your post',
+        'Someone commented on your post',
+        'Someone replied to your comment',
+        'Someone mentioned you',
+        'Welcome notification',
+        'New feature announcements',
+        'App update available',
+        'New listings matching your saved filters',
+        'Booking request',
+      ];
+
+      const existingNotifications = await prisma.notification.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          body: true,
+          data: true,
+          isRead: true,
+          createdAt: true,
+        },
+      });
+
+      const seededNotificationIds = existingNotifications
+        .filter((notification) => {
+          const data = notification.data as Record<string, unknown> | null
+          const isSeeded = data?.source === 'seed'
+          const matchesSampleTitle = sampleTitles.includes(notification.title)
+          const matchesSampleBody = notification.body && [
+            'A user left a positive review for your recent interaction.',
+            'Your average rating increased to 4.8 based on recent feedback.',
+            'A nearby urgent blood request matches your blood group and location.',
+            'One of your community posts received a new like.',
+            'A new comment was added to your recent post.',
+            'Your comment received a reply from another user.',
+            'You were mentioned in a community discussion.',
+            'Welcome back to BachelorHub. Explore new features and connect with people nearby.',
+            'A new matching and messaging experience is now available.',
+            'A new app update is ready to install for the best experience.',
+            'We found new listings that match your saved preferences.',
+            'You received a new booking request for one of your listings.',
+          ].includes(notification.body)
+          return isSeeded || matchesSampleTitle || matchesSampleBody
+        })
+        .map((notification) => notification.id)
+
+      if (seededNotificationIds.length > 0) {
+        await prisma.notification.deleteMany({
+          where: { id: { in: seededNotificationIds } },
+        })
+      }
+
       const notifications = await prisma.notification.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
