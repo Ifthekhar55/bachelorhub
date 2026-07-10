@@ -655,8 +655,11 @@ const Community = () => {
     toast.success('Comment updated')
   }
 
-  const handleDeleteComment = (postId: number | string, commentId: number | string) => {
+  const handleDeleteComment = async (postId: number | string, commentId: number | string) => {
     if (!window.confirm('Delete this comment?')) return
+
+    const previousPosts = posts
+
     setPosts((prev) => prev.map((post) => {
       if (post.id !== postId) return post
       return {
@@ -665,7 +668,15 @@ const Community = () => {
         commentsList: (post.commentsList ?? []).filter((c) => c.id !== commentId),
       }
     }))
-    toast.success('Comment deleted')
+
+    try {
+      await api.delete(`/api/community/comments/${commentId}`)
+      toast.success('Comment deleted')
+    } catch (error) {
+      setPosts(previousPosts)
+      console.error('Failed to delete comment:', error)
+      toast.error('Failed to delete comment')
+    }
   }
 
   const handleLikeComment = async (postId: number | string, commentId: number | string) => {

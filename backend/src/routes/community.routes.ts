@@ -9,6 +9,7 @@ router.put('/:postId', communityController.updatePost);
 router.delete('/:postId', communityController.deletePost);
 router.post('/:postId/comments', communityController.addComment);
 router.post('/:postId/like', communityController.togglePostLike);
+router.delete('/comments/:commentId', communityController.deleteComment);
 router.post('/comments/:commentId/like', communityController.toggleCommentLike);
 
 export default router;

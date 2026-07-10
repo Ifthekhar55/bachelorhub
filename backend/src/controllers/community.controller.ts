@@ -240,6 +240,38 @@ export class CommunityController {
     }
   };
 
+  deleteComment = async (req: Request, res: Response) => {
+    try {
+      const commentId = String(req.params.commentId);
+      const comment = await prisma.communityComment.findUnique({
+        where: { id: commentId },
+        select: { postId: true },
+      });
+
+      if (!comment) {
+        return res.status(404).json({ error: 'Comment not found' });
+      }
+
+      await prisma.$transaction([
+        prisma.communityCommentLike.deleteMany({
+          where: { commentId },
+        }),
+        prisma.communityComment.delete({
+          where: { id: commentId },
+        }),
+        prisma.communityPost.update({
+          where: { id: comment.postId },
+          data: { comments: { decrement: 1 } },
+        }),
+      ]);
+
+      res.json({ message: 'Comment deleted successfully' });
+    } catch (error) {
+      console.error('Delete comment error:', error);
+      res.status(500).json({ error: 'Failed to delete comment' });
+    }
+  };
+
   toggleCommentLike = async (req: Request, res: Response) => {
     try {
       const commentId = req.params.commentId;
