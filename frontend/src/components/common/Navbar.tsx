@@ -191,7 +191,7 @@ const Navbar = () => {
             </div>
 
             {/* Right Section (profile always visible, theme/language move to mobile menu) */}
-            <div className="flex items-center space-x-3 flex-shrink-0">
+            <div className="flex items-center space-x-2 flex-shrink-0">
               <div className="hidden md:inline-flex">
                 <Button
                   variant="ghost"
