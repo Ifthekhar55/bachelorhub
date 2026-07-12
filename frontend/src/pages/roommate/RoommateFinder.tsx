@@ -121,10 +121,12 @@ const RoommateFinder = () => {
           }
         }
 
+        const profilePhoto = typeof user.profilePhoto === 'string' ? user.profilePhoto.trim() : ''
+
         return {
           id: String(user.id),
           name: user.name,
-          avatar: user.profilePhoto || `https://i.pravatar.cc/150?img=${user.id}`,
+          avatar: profilePhoto || '',
           location: user.location || user.servingArea || 'Dhaka',
           experience: user.experience || '',
           specialties: specialtiesArr,
