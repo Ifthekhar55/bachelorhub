@@ -437,8 +437,8 @@ const RoommateFinder = () => {
               <Card key={chef.id} className="p-4 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
                 <div className="flex gap-3">
                   <Avatar className="w-12 h-12">
-                    <AvatarImage src={chef.avatar} />
-                    <AvatarFallback>{chef.name[0]}</AvatarFallback>
+                    {chef.avatar ? <AvatarImage src={chef.avatar} /> : null}
+                    <AvatarFallback>{chef.name?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <p className="font-semibold">{chef.name}</p>
@@ -466,8 +466,8 @@ const RoommateFinder = () => {
                 <Card className="p-6 hover:shadow-lg transition dark:bg-gray-800">
                   <div className="flex gap-4 mb-4">
                     <Avatar className="w-20 h-20">
-                      <AvatarImage src={chef.avatar} />
-                      <AvatarFallback>{chef.name[0]}</AvatarFallback>
+                      {chef.avatar ? <AvatarImage src={chef.avatar} /> : null}
+                      <AvatarFallback>{chef.name?.[0] || 'U'}</AvatarFallback>
                     </Avatar>
 
                     <div className="flex-1">
@@ -631,8 +631,8 @@ const RoommateFinder = () => {
                     <div className="space-y-6">
                       <div className="flex gap-6">
                         <Avatar className="w-24 h-24">
-                          <AvatarImage src={selectedChef.avatar} />
-                          <AvatarFallback>{selectedChef.name[0]}</AvatarFallback>
+                          {selectedChef.avatar ? <AvatarImage src={selectedChef.avatar} /> : null}
+                          <AvatarFallback>{selectedChef.name?.[0] || 'U'}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
