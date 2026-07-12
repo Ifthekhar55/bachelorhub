@@ -1,7 +1,7 @@
 // src/pages/HomePage.tsx
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Search, MapPin, Users, Shield, CreditCard, Headphones } from 'lucide-react'
+import { Search, MapPin, Users, Shield, Headphones } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -101,14 +101,14 @@ const HomePage = () => {
       {/* Features Section */}
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="flex flex-wrap justify-center gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="text-center"
+                className="w-full max-w-[260px] text-center flex flex-col items-center"
               >
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
                   <feature.icon className="w-8 h-8 text-blue-600" />
