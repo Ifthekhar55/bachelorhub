@@ -47,8 +47,8 @@ const normalizeRecommendedListing = (listing: any): RecommendedListing => {
 const HomePage = () => {
   const features = [
     { icon: Shield, title: 'Verified Properties', description: 'Manually Verified' },
-    { icon: Users, title: 'NID Verified Owners', description: 'Trusted & Secure' },
-    { icon: CreditCard, title: 'Secure Payments', description: 'bKash, Nagad, Card' },
+    { icon: Users, title: 'Verified Owners', description: 'Trusted & Secure' },
+    //{ icon: CreditCard, title: 'Secure Payments', description: 'bKash, Nagad, Card' },
     { icon: Headphones, title: 'Customer Support', description: '24/7 Assistance' },
   ]
 
