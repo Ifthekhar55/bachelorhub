@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import { prisma } from '../prisma'
+import { notificationService } from '../services/notification.service'
 
 export class BookingController {
   createBooking = async (req: Request, res: Response) => {
@@ -34,6 +35,27 @@ export class BookingController {
           packageName,
           startDate: new Date(startDate),
           preferredTime,
+        },
+        include: {
+          tenant: {
+            select: { id: true, name: true, profilePhoto: true },
+          },
+          chef: {
+            select: { id: true, name: true, profilePhoto: true },
+          },
+        },
+      })
+
+      await notificationService.createNotification({
+        userId: chefId,
+        type: 'booking-request',
+        title: 'New booking request',
+        body: `${booking.tenant.name || 'A user'} requested a ${booking.packageName} booking for ${new Date(booking.startDate).toLocaleDateString()}.`,
+        data: {
+          bookingId: booking.id,
+          tenantId: booking.tenantId,
+          chefId: booking.chefId,
+          status: 'pending',
         },
       })
 
@@ -110,6 +132,19 @@ export class BookingController {
           chef: {
             select: { id: true, name: true, profilePhoto: true },
           },
+        },
+      })
+
+      await notificationService.createNotification({
+        userId: updatedBooking.tenantId,
+        type: 'booking',
+        title: status === 'confirmed' ? 'Booking accepted' : 'Booking rejected',
+        body: `Your booking request for ${updatedBooking.packageName} was ${status === 'confirmed' ? 'accepted' : 'rejected'} by ${updatedBooking.chef.name || 'the chef'}.`,
+        data: {
+          bookingId: updatedBooking.id,
+          tenantId: updatedBooking.tenantId,
+          chefId: updatedBooking.chefId,
+          status,
         },
       })
 

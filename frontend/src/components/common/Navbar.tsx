@@ -47,7 +47,7 @@ const Navbar = () => {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0)
   const { user, isAuthenticated, logout, isLoading } = useAuthStore()
-  const { unreadCount } = useNotificationStore()
+  const { unreadCount, addNotification } = useNotificationStore()
   const socket = useSocket()
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -78,14 +78,30 @@ const Navbar = () => {
       fetchUnreadMessagesCount()
     }
 
+    const handleNewNotification = (payload: { notification?: any }) => {
+      const incoming = payload?.notification
+      if (!incoming) return
+      addNotification({
+        id: incoming.id,
+        type: incoming.type,
+        title: incoming.title,
+        body: incoming.body,
+        data: incoming.data,
+        isRead: Boolean(incoming.isRead),
+        createdAt: incoming.createdAt,
+      })
+    }
+
     socket.on('new_unread_message', refreshCount)
     socket.on('messages_read', refreshCount)
+    socket.on('new_notification', handleNewNotification)
 
     return () => {
       socket.off('new_unread_message', refreshCount)
       socket.off('messages_read', refreshCount)
+      socket.off('new_notification', handleNewNotification)
     }
-  }, [socket])
+  }, [socket, addNotification])
 
   const fetchUnreadMessagesCount = async () => {
     try {
