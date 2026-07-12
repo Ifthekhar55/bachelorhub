@@ -24,6 +24,7 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import VerifyOTP from './pages/auth/VerifyOTP'
 import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 import Community from './pages/community/Community'
 import UsedItems from './pages/used-items/UsedItems'
 import UsedItemDetail from './pages/used-items/UsedItemDetails'
@@ -106,6 +107,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Protected Routes */}
           <Route element={<PrivateRoute />}>

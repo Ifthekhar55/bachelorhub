@@ -1,10 +1,12 @@
 // src/services/api.ts
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_URL || '/api'
+const defaultBaseURL = '/api';
+const productionBaseURL = 'https://bachelorhub-production.up.railway.app/api';
+const baseURL = import.meta.env.VITE_API_URL || (window.location.hostname.includes('railway') ? productionBaseURL : defaultBaseURL);
 
 if (!import.meta.env.VITE_API_URL) {
-  console.warn('VITE_API_URL is not set. Using /api relative path for API requests. Make sure your backend is accessible from the same origin or set VITE_API_URL in production.')
+  console.warn('Using API base URL:', baseURL)
 }
 
 const api = axios.create({
@@ -27,10 +29,14 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isPublicAuthRequest =
+      error.config?.url?.includes('/auth/forgot-password') ||
+      error.config?.url?.includes('/auth/reset-password');
+
+    if (error.response?.status === 401 && !isPublicAuthRequest) {
       localStorage.removeItem('accessToken');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      if (window.location.hash !== '#/login' && window.location.pathname !== '/login') {
+        window.location.href = '/#/login';
       }
     }
     return Promise.reject(error);

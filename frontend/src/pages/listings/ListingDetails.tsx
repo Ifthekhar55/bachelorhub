@@ -320,13 +320,9 @@ const ListingDetail = () => {
                 </div>
               </div>
 
-              <Button onClick={handleContact} className="w-full bg-blue-600 hover:bg-blue-700 mb-3">
+              <Button onClick={handleContact} className="w-full bg-blue-600 hover:bg-blue-700">
                 <MessageCircle className="w-4 h-4 mr-2" />
                 Contact Landlord
-              </Button>
-
-              <Button variant="outline" className="w-full">
-                Request Visit
               </Button>
             </div>
 

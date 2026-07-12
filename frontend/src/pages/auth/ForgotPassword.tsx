@@ -4,19 +4,25 @@ import { motion } from 'framer-motion'
 import { Mail, Send, ArrowLeft } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { toast } from 'react-hot-toast'
+import api from '../../services/api'
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoading(true)
+
     try {
-      // API call would go here
-      toast.success('Reset link sent to your email!')
+      const response = await api.post('/api/auth/forgot-password', { email })
+      toast.success(response.data?.message || 'Reset link sent to your email!')
       setSubmitted(true)
-    } catch (error) {
-      toast.error('Failed to send reset link')
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to send reset link')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -73,8 +79,8 @@ const ForgotPassword = () => {
             </div>
           </div>
 
-          <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600">
-            Send Reset Link
+          <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600">
+            {loading ? 'Sending...' : 'Send Reset Link'}
             <Send className="w-4 h-4 ml-2" />
           </Button>
         </form>

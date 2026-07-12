@@ -23,11 +23,42 @@ interface House {
   features: string[];
   facilities?: string[];
   rent?: string;
-  roomType: "single" | "shared";
+  roomType: "single" | "shared" | "any";
   gender: "male" | "female" | "any";
   authorId?: string;
   author?: string;
 }
+
+const normalizeRoomType = (listing: any): House['roomType'] => {
+  const explicitRoomType =
+    typeof listing.roomType === 'string'
+      ? listing.roomType
+      : typeof listing.room_type === 'string'
+        ? listing.room_type
+        : '';
+
+  if (explicitRoomType === 'single' || explicitRoomType === 'shared') {
+    return explicitRoomType;
+  }
+
+  const seatCount = Number(
+    listing.availableSeats ?? listing.available_seats ?? listing.seats ?? 0
+  );
+
+  if (seatCount > 1) {
+    return 'shared';
+  }
+
+  if (seatCount === 1) {
+    return 'single';
+  }
+
+  const title = String(listing.title || '').toLowerCase();
+  if (title.includes('shared')) return 'shared';
+  if (title.includes('single')) return 'single';
+
+  return 'any';
+};
 
 const normalizeListing = (listing: any): House => {
   const rawPrice = listing.priceValue ?? listing.rent ?? listing.price ?? 0
@@ -47,7 +78,7 @@ const normalizeListing = (listing: any): House => {
       Array.isArray(listing.photos) && listing.photos.length > 0
         ? listing.photos[0]
         : listing.image || 'https://placehold.co/400x300?text=No+Image',
-    roomType: listing.roomType || 'any',
+    roomType: normalizeRoomType(listing),
     gender: listing.gender || listing.genderPreference || 'any',
     authorId: listing.landlordId || listing.authorId,
     author: listing.author,

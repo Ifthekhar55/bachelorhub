@@ -108,14 +108,23 @@ const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : u
 const smtpUser = process.env.SMTP_USER;
 const smtpPass = process.env.SMTP_PASS;
 
-const transporter = (smtpHost && smtpPort && smtpUser && smtpPass)
-  ? nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: false,
-      auth: { user: smtpUser, pass: smtpPass },
-    })
-  : null;
+let transporter: nodemailer.Transporter | null = null;
+
+if (smtpHost && smtpPort && smtpUser && smtpPass) {
+  transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: false,
+    auth: { user: smtpUser, pass: smtpPass },
+  });
+}
+
+const passwordResetStore = new Map<string, {
+  token: string;
+  userId: string;
+  email: string;
+  expiresAt: Date;
+}>();
 
 const generateOtp = () => {
   return Math.floor(10 ** (OTP_LENGTH - 1) + Math.random() * 9 * 10 ** (OTP_LENGTH - 1)).toString();
@@ -127,7 +136,7 @@ const sendOtpMessage = async (email: string, otp: string) => {
 
   if (transporter) {
     await transporter.sendMail({
-      from: smtpUser,
+      from: smtpUser || 'no-reply@example.com',
       to: email,
       subject,
       text,
@@ -137,6 +146,49 @@ const sendOtpMessage = async (email: string, otp: string) => {
 
   // Fallback logging for development if SMTP is not configured
   console.log(`OTP for ${email}: ${otp}`);
+};
+
+const sendPasswordResetEmail = async (email: string, resetLink: string) => {
+  const subject = 'Reset your BachelorHub password';
+  const text = `Use the following link to reset your password: ${resetLink}\n\nThis link expires in 15 minutes.`;
+
+  if (transporter) {
+    await transporter.sendMail({
+      from: smtpUser || 'no-reply@example.com',
+      to: email,
+      subject,
+      text,
+    });
+    return true;
+  }
+
+  try {
+    const testAccount = await nodemailer.createTestAccount();
+    transporter = nodemailer.createTransport({
+      host: testAccount.smtp.host,
+      port: testAccount.smtp.port,
+      secure: testAccount.smtp.secure,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+
+    const info = await transporter.sendMail({
+      from: 'no-reply@bachelorhub.local',
+      to: email,
+      subject,
+      text,
+    });
+
+    console.log('Password reset email sent via Ethereal test account');
+    console.log(nodemailer.getTestMessageUrl(info));
+    return true;
+  } catch (error) {
+    console.error('Failed to send password reset email:', error);
+    console.log(`Password reset link for ${email}: ${resetLink}`);
+    return false;
+  }
 };
 
 const queueOtpForEmail = async (email: string, userId: string) => {
@@ -262,6 +314,74 @@ router.post('/resend-otp', async (req, res) => {
   } catch (error) {
     console.error('Resend OTP error:', error);
     res.status(500).json({ error: 'Unable to resend OTP' });
+  }
+});
+
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+    if (!user) {
+      return res.status(200).json({ message: 'If an account exists, a reset link has been sent.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    passwordResetStore.set(token, {
+      token,
+      userId: user.id,
+      email: normalizedEmail,
+      expiresAt,
+    });
+
+    const resetLink = `${FRONTEND_URL}/#/reset-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+    const sent = await sendPasswordResetEmail(normalizedEmail, resetLink);
+
+    if (!sent) {
+      return res.status(500).json({ error: 'Unable to send reset link right now' });
+    }
+
+    res.json({ message: 'Reset link sent to your email' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Unable to process password reset request' });
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, token, password } = req.body;
+
+    if (!email || !token || !password) {
+      return res.status(400).json({ error: 'Email, token, and new password are required' });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const resetEntry = passwordResetStore.get(token);
+
+    if (!resetEntry || resetEntry.email !== normalizedEmail || resetEntry.expiresAt < new Date()) {
+      return res.status(400).json({ error: 'Invalid or expired reset link' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+      where: { id: resetEntry.userId },
+      data: { password: hashedPassword },
+    });
+
+    passwordResetStore.delete(token);
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Unable to reset password' });
   }
 });
 
