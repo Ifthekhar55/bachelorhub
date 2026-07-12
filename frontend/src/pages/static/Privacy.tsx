@@ -16,17 +16,17 @@ const Privacy = () => {
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Information We Collect</h2>
-              <p>We may collect information that you provide directly to us, including your name, email address, phone number, profile details, verification documents such as NID or other government-issued identification, messages, rental or booking requests, listing information, and payment-related information. We may also collect technical information such as device information, IP address, app usage data, crash logs, and analytics data.</p>
+              <p>We may collect information that you provide directly to us, including your name, email address, phone number, profile details, messages, rental or booking requests, listing information, and payment-related information. We may also collect technical information such as device information, IP address, app usage data, crash logs, and analytics data.</p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">2. How We Use Your Information</h2>
-              <p>We use your information to create and manage your account, provide and improve our services, verify user identity, prevent fraud and abuse, communicate with you, process bookings and transactions, send service notifications, and comply with legal obligations.</p>
+              <p>We use your information to create and manage your account, provide and improve our services, verify user identity, prevent fraud and abuse, communicate with you, process bookings, send service notifications, and comply with legal obligations.</p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">3. Information Sharing</h2>
-              <p>We do not sell your personal information. We may share your information with trusted service providers that help us operate the app, such as hosting, analytics, cloud storage, support, and payment processing services. We may also share information with other users when necessary to complete a booking, listing, or transaction. We may disclose information when required by law or to protect the rights, safety, or security of our users.</p>
+              <p>We do not sell your personal information. We may share your information with trusted service providers that help us operate the app, such as hosting, analytics, cloud storage, support, and payment processing services. We may also share information with other users when necessary to complete a booking or listing. We may disclose information when required by law or to protect the rights, safety, or security of our users.</p>
             </section>
 
             <section>

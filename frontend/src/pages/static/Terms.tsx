@@ -28,7 +28,7 @@ const Terms = () => {
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">4. Verification Process</h2>
-              <p>We verify user identities through NID and other documents, but we cannot guarantee the absolute accuracy of all information. Users should exercise due diligence.</p>
+              <p>We verify user identities through phone number verification and email confirmation, but we cannot guarantee the absolute accuracy of all information. Users should exercise due diligence.</p>
             </section>
 
             <section>
@@ -36,7 +36,6 @@ const Terms = () => {
               <ul className="list-disc list-inside space-y-1 ml-4">
                 <li>Posting false or misleading information</li>
                 <li>Harassing other users</li>
-                <li>Attempting to bypass payment systems</li>
                 <li>Using the platform for illegal activities</li>
               </ul>
             </section>
