@@ -31,3 +31,8 @@ export const upload = multer({
 
 export const uploadMultiple = upload.array('photos', 10);
 export const uploadSingle = upload.single('profilePhoto');
+export const uploadProfileAndFoodPhotos = upload.fields([
+  { name: 'profilePhoto', maxCount: 1 },
+  { name: 'foodPhotos', maxCount: 10 },
+  { name: 'photos', maxCount: 10 },
+]);

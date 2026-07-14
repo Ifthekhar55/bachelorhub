@@ -203,18 +203,33 @@ export class UserController {
       let profilePhoto: string | null | undefined = profilePhotoUrl;
       const requestWithFiles = req as Request & { files?: MulterFile[] };
       const shouldRemoveProfilePhoto = removeProfilePhoto === 'true' || removeProfilePhoto === true;
+      const existingUser = await prisma.user.findUnique({ where: { id: userId }, select: { profilePhoto: true } });
       
       // If there are files and one might be a profile photo
       if (requestWithFiles.files && requestWithFiles.files.length > 0) {
         // Try to find profilePhoto in files (for backward compatibility)
         const profilePhotoFile = requestWithFiles.files.find(f => f.fieldname === 'profilePhoto');
         if (profilePhotoFile) {
-          profilePhoto = await cloudinaryService.uploadImage(profilePhotoFile, 'profiles');
+          try {
+            profilePhoto = await cloudinaryService.uploadImage(profilePhotoFile, 'profiles');
+          } catch (uploadError) {
+            console.error('Profile photo upload failed:', uploadError);
+            console.error('Profile photo file details:', {
+              fieldname: profilePhotoFile.fieldname,
+              originalname: profilePhotoFile.originalname,
+              mimetype: profilePhotoFile.mimetype,
+              size: profilePhotoFile.size,
+              path: profilePhotoFile.path,
+            });
+            profilePhoto = undefined;
+          }
         }
       }
 
       if (shouldRemoveProfilePhoto) {
         profilePhoto = null;
+      } else if (profilePhoto === undefined && existingUser?.profilePhoto) {
+        profilePhoto = existingUser.profilePhoto;
       }
 
       const interestsArray = interests ? interests.split(',').map((i: string) => i.trim()) : undefined;
@@ -224,12 +239,23 @@ export class UserController {
       const foodsArray = foods ? (Array.isArray(foods) ? foods : foods.split(',').map((f: string) => f.trim())) : undefined;
       
       // Handle food photos
-      let foodPhotos = [];
+      let foodPhotos: string[] = [];
       if (requestWithFiles.files) {
         const foodPhotoFiles = requestWithFiles.files.filter(f => f.fieldname === 'foodPhotos' || f.fieldname === 'photos');
         for (const file of foodPhotoFiles) {
-          const uploadedUrl = await cloudinaryService.uploadImage(file, 'food-photos');
-          foodPhotos.push(uploadedUrl);
+          try {
+            const uploadedUrl = await cloudinaryService.uploadImage(file, 'food-photos');
+            foodPhotos.push(uploadedUrl);
+          } catch (uploadError) {
+            console.error('Food photo upload failed:', uploadError);
+            console.error('Food photo file details:', {
+              fieldname: file.fieldname,
+              originalname: file.originalname,
+              mimetype: file.mimetype,
+              size: file.size,
+              path: file.path,
+            });
+          }
         }
       }
 

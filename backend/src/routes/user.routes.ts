@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware';
-import { upload } from '../middleware/upload.middleware';
+import { uploadProfileAndFoodPhotos } from '../middleware/upload.middleware';
 import { userController } from '../controllers/user.controller';
 
 const router = Router();
@@ -17,7 +17,7 @@ router.get('/settings', userController.getSettings);
 router.get('/notifications', userController.getNotifications);
 router.put('/notifications/read/:id', userController.markNotificationAsRead);
 router.put('/notifications/read-all', userController.markAllNotificationsAsRead);
-router.put('/profile', upload.array('foodPhotos', 10), userController.updateProfile);
+router.put('/profile', uploadProfileAndFoodPhotos, userController.updateProfile);
 router.put('/settings', userController.updateSettings);
 router.post('/change-password', userController.changePassword);
 router.delete('/account', userController.deleteAccount);
