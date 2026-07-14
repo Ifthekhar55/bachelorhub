@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
@@ -82,8 +82,10 @@ const Profile = ({ forceEdit = false }: { forceEdit?: boolean }) => {
   const [packages, setPackages] = useState<{ name: string; price: number; description: string }[]>([])
   const [newPackage, setNewPackage] = useState({ name: '', price: '', description: '' })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [deleteProfilePhoto, setDeleteProfilePhoto] = useState(false)
   const [selectedFoodFiles, setSelectedFoodFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
+  const profilePhotoInputRef = useRef<HTMLInputElement | null>(null)
   const [showNotificationsModal, setShowNotificationsModal] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -232,7 +234,9 @@ const Profile = ({ forceEdit = false }: { forceEdit?: boolean }) => {
       // Auto-mark as homechef if all required fields are filled
       formData.append('isHomechef', isHomechefComplete() ? 'true' : 'false')
       
-      if (selectedFile) {
+      if (deleteProfilePhoto) {
+        formData.append('removeProfilePhoto', 'true')
+      } else if (selectedFile) {
         formData.append('profilePhoto', selectedFile)
       }
       if (selectedFoodFiles && selectedFoodFiles.length > 0) {
@@ -257,6 +261,7 @@ const Profile = ({ forceEdit = false }: { forceEdit?: boolean }) => {
       
       setIsEditing(false)
       setSelectedFile(null)
+      setDeleteProfilePhoto(false)
       if (isHomechefComplete()) {
         toast.success('Congratulations! You are now a Homechef! 🎉')
       } else {
@@ -268,10 +273,28 @@ const Profile = ({ forceEdit = false }: { forceEdit?: boolean }) => {
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0])
+      setDeleteProfilePhoto(false)
     }
+  }
+
+  const handleViewProfilePhoto = () => {
+    const previewUrl = selectedFile ? URL.createObjectURL(selectedFile) : profile?.profilePhoto
+
+    if (!previewUrl) {
+      toast.error('No profile photo available yet')
+      return
+    }
+
+    window.open(previewUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleDeleteProfilePhoto = () => {
+    setSelectedFile(null)
+    setDeleteProfilePhoto(true)
+    toast.success('Profile photo will be removed when you save changes')
   }
 
   const handleFoodFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -328,7 +351,7 @@ const Profile = ({ forceEdit = false }: { forceEdit?: boolean }) => {
                 <Avatar className="w-32 h-32 border-4 border-white dark:border-gray-900 shadow-xl">
                   {selectedFile ? (
                     <AvatarImage src={URL.createObjectURL(selectedFile)} className="object-cover" />
-                  ) : profile.profilePhoto ? (
+                  ) : !deleteProfilePhoto && profile.profilePhoto ? (
                     <AvatarImage src={profile.profilePhoto} className="object-cover" />
                   ) : null}
                   <AvatarFallback className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-4xl font-bold">
@@ -336,10 +359,12 @@ const Profile = ({ forceEdit = false }: { forceEdit?: boolean }) => {
                   </AvatarFallback>
                 </Avatar>
                 {isOwnProfile && isEditing && (
-                  <label className="absolute bottom-0 right-0 bg-green-600 text-white p-2 rounded-full cursor-pointer hover:bg-green-700 transition shadow-lg">
-                    <Camera className="w-4 h-4" />
-                    <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                  </label>
+                  <div className="absolute bottom-0 right-0 flex flex-col gap-2">
+                    <label className="bg-green-600 text-white p-2 rounded-full cursor-pointer hover:bg-green-700 transition shadow-lg">
+                      <Camera className="w-4 h-4" />
+                      <input ref={profilePhotoInputRef} type="file" className="hidden" accept="image/*" onChange={handleProfilePhotoChange} />
+                    </label>
+                  </div>
                 )}
               </div>
             </div>
@@ -359,7 +384,20 @@ const Profile = ({ forceEdit = false }: { forceEdit?: boolean }) => {
               // Edit Mode
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold mb-4">Edit Profile</h2>
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+                    <h2 className="text-2xl font-bold">Edit Profile</h2>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" onClick={handleViewProfilePhoto}>
+                        View Photo
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => profilePhotoInputRef.current?.click()}>
+                        Upload Photo
+                      </Button>
+                      <Button type="button" variant="outline" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleDeleteProfilePhoto}>
+                        Delete Photo
+                      </Button>
+                    </div>
+                  </div>
                   
                   {/* Homechef Completion Status */}
                   <Card className="p-4 mb-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">

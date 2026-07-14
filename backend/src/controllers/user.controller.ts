@@ -196,11 +196,13 @@ export class UserController {
         packages,
         isHomechef,
         profilePhoto: profilePhotoUrl,
+        removeProfilePhoto,
       } = req.body;
 
       // Handle existing profile photo or upload new one
-      let profilePhoto = profilePhotoUrl;
+      let profilePhoto: string | null | undefined = profilePhotoUrl;
       const requestWithFiles = req as Request & { files?: MulterFile[] };
+      const shouldRemoveProfilePhoto = removeProfilePhoto === 'true' || removeProfilePhoto === true;
       
       // If there are files and one might be a profile photo
       if (requestWithFiles.files && requestWithFiles.files.length > 0) {
@@ -209,6 +211,10 @@ export class UserController {
         if (profilePhotoFile) {
           profilePhoto = await cloudinaryService.uploadImage(profilePhotoFile, 'profiles');
         }
+      }
+
+      if (shouldRemoveProfilePhoto) {
+        profilePhoto = null;
       }
 
       const interestsArray = interests ? interests.split(',').map((i: string) => i.trim()) : undefined;
@@ -234,7 +240,7 @@ export class UserController {
         occupation: occupation || undefined,
         education: education || undefined,
         interests: interestsArray,
-        profilePhoto: profilePhoto || undefined,
+        profilePhoto: profilePhoto === null ? null : (profilePhoto || undefined),
       };
 
       // Add homechef fields if provided

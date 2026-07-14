@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -47,7 +47,8 @@ interface UsedItem {
   photos: string[]
   isUrgent: boolean
   createdAt: string
-  _count: { savedBy: number }
+  viewCount: number
+  _count: { savedBy: number; messages: number }
 }
 
 interface SavedItem {
@@ -201,14 +202,37 @@ const Dashboard = () => {
     { label: 'My Bookings', value: bookings.length, icon: Calendar, color: 'text-green-500', bg: 'bg-green-100', tab: 'bookings' as const },
   ]
 
-  const chartData = [
-    { month: 'Jan', views: 45, inquiries: 12 },
-    { month: 'Feb', views: 52, inquiries: 15 },
-    { month: 'Mar', views: 48, inquiries: 14 },
-    { month: 'Apr', views: 61, inquiries: 18 },
-    { month: 'May', views: 55, inquiries: 16 },
-    { month: 'Jun', views: 67, inquiries: 20 },
-  ]
+  const chartData = useMemo(() => {
+    const months = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date()
+      date.setMonth(date.getMonth() - (5 - index))
+      return {
+        month: date.toLocaleString('en', { month: 'short' }),
+        year: date.getFullYear(),
+        monthIndex: date.getMonth(),
+      }
+    })
+
+    return months.map(({ month, year, monthIndex }) => {
+      const views = myListings.reduce((total, item) => {
+        const createdAt = new Date(item.createdAt)
+        if (createdAt.getFullYear() === year && createdAt.getMonth() === monthIndex) {
+          return total + (item.viewCount || 0)
+        }
+        return total
+      }, 0)
+
+      const inquiries = myListings.reduce((total, item) => {
+        const createdAt = new Date(item.createdAt)
+        if (createdAt.getFullYear() === year && createdAt.getMonth() === monthIndex) {
+          return total + (item._count?.messages || 0)
+        }
+        return total
+      }, 0)
+
+      return { month, views, inquiries }
+    })
+  }, [myListings])
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -308,18 +332,37 @@ const Dashboard = () => {
 
               <div>
                 <Card className="p-6 dark:bg-gray-800">
-                  <h2 className="text-xl font-semibold mb-4">Performance Overview</h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-xl font-semibold">Performance Overview</h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Based on your listings activity</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total views</p>
+                      <p className="text-lg font-semibold text-green-600">{myListings.reduce((total, item) => total + (item.viewCount || 0), 0)}</p>
+                    </div>
+                  </div>
                   <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="views" stroke="#10B981" name="Views" />
-                        <Line type="monotone" dataKey="inquiries" stroke="#3B82F6" name="Inquiries" />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    {loading && myListings.length === 0 ? (
+                      <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                        Loading performance data...
+                      </div>
+                    ) : myListings.length === 0 ? (
+                      <div className="flex h-full items-center justify-center text-center text-sm text-gray-500 dark:text-gray-400">
+                        Post a listing to start tracking views and inquiries.
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <Tooltip />
+                          <Line type="monotone" dataKey="views" stroke="#10B981" name="Views" />
+                          <Line type="monotone" dataKey="inquiries" stroke="#3B82F6" name="Inquiries" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </Card>
               </div>

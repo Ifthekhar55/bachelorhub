@@ -466,7 +466,15 @@ export class UsedItemController {
   getMyListings = async (req: Request, res: Response) => {
     try {
       const postedById = String((req as any).user?.userId);
-      const listings = await prisma.usedItem.findMany({ where: { postedById }, include: { _count: { select: { savedBy: true } } }, orderBy: { createdAt: 'desc' } });
+      const listings = await prisma.usedItem.findMany({
+        where: { postedById },
+        include: {
+          _count: {
+            select: { savedBy: true, messages: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
       res.json(listings);
     } catch (error) {
       console.error('Get my listings error:', error);
