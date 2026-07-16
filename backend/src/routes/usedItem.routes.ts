@@ -27,6 +27,7 @@ router.patch('/:id/messages/mark-as-read', usedItemController.markMessagesAsRead
 router.get('/:id/messages', usedItemController.getMessages);
 router.post('/:id/report', usedItemController.reportItem);
 router.post('/:id/review', usedItemController.createItemReview);
+router.delete('/:id/review/:reviewId', usedItemController.deleteItemReview);
 
 // Public route - must be last to avoid matching other patterns
 router.get('/:id', usedItemController.getUsedItemById);

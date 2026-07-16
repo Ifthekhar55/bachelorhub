@@ -5,7 +5,7 @@ import {
   MapPin, Clock, Heart, MessageCircle, Flag, 
   Share2, ChevronLeft, ChevronRight, Shield, Star, 
   CheckCircle, Zap, Truck, Home, Package, X,
-  Send, Image, Navigation, DollarSign, TrendingDown
+  Send, Image, Navigation, DollarSign, TrendingDown, Trash2
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
@@ -103,6 +103,7 @@ const UsedItemDetail = () => {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id || fetchedIds.current.has(id)) return;
@@ -238,6 +239,25 @@ const UsedItemDetail = () => {
       toast.error(error?.response?.data?.error || 'Failed to submit review');
     } finally {
       setSubmittingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!user) {
+      toast.error('Please login to delete your review');
+      navigate('/login');
+      return;
+    }
+
+    setDeletingReviewId(reviewId);
+    try {
+      await api.delete(`/api/used-items/${id}/review/${reviewId}`);
+      toast.success('Review deleted successfully');
+      fetchItemDetails();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Failed to delete review');
+    } finally {
+      setDeletingReviewId(null);
     }
   };
 
@@ -439,10 +459,24 @@ const UsedItemDetail = () => {
                                 <p className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 text-yellow-500">
-                              {Array.from({ length: 5 }).map((_, index) => (
-                                <Star key={index} className={`w-4 h-4 ${index < review.rating ? 'fill-current' : 'text-gray-300'}`} />
-                              ))}
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 text-yellow-500">
+                                {Array.from({ length: 5 }).map((_, index) => (
+                                  <Star key={index} className={`w-4 h-4 ${index < review.rating ? 'fill-current' : 'text-gray-300'}`} />
+                                ))}
+                              </div>
+                              {user?.id === review.reviewer.id && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => handleDeleteReview(review.id)}
+                                  disabled={deletingReviewId === review.id}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-1" />
+                                  {deletingReviewId === review.id ? 'Deleting...' : 'Delete'}
+                                </Button>
+                              )}
                             </div>
                           </div>
                           {review.comment && <p className="mt-3 text-sm text-gray-600">{review.comment}</p>}

@@ -667,6 +667,47 @@ export class UsedItemController {
     }
   };
 
+  deleteItemReview = async (req: Request, res: Response) => {
+    try {
+      const reviewerId = String((req as any).user?.userId);
+      const itemId = String(req.params.id);
+      const reviewId = String(req.params.reviewId);
+
+      const review = await prisma.review.findFirst({
+        where: { id: reviewId, itemId, reviewerId },
+      });
+
+      if (!review) {
+        return res.status(404).json({ error: 'Review not found' });
+      }
+
+      await prisma.review.delete({ where: { id: reviewId } });
+
+      const remainingReviews = await prisma.review.findMany({
+        where: { revieweeId: review.revieweeId },
+        select: { rating: true },
+      });
+
+      const nextCount = remainingReviews.length;
+      const nextRating = nextCount === 0
+        ? 0
+        : Number((remainingReviews.reduce((sum, item) => sum + item.rating, 0) / nextCount).toFixed(1));
+
+      await prisma.user.update({
+        where: { id: review.revieweeId },
+        data: {
+          rating: nextRating,
+          reviewsCount: nextCount,
+        },
+      });
+
+      res.json({ message: 'Review deleted successfully' });
+    } catch (error) {
+      console.error('Delete item review error:', error);
+      res.status(500).json({ error: 'Failed to delete review' });
+    }
+  };
+
   markMessagesAsRead = async (req: Request, res: Response) => {
     try {
       const userId = String((req as any).user?.userId);
