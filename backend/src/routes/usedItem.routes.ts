@@ -8,6 +8,7 @@ const router = Router();
 // Public routes
 router.get('/', usedItemController.getUsedItems);
 router.get('/categories', usedItemController.getCategories);
+router.get('/:id/reviews', usedItemController.getItemReviews);
 
 // Protected routes
 router.use(authenticate);
@@ -25,6 +26,7 @@ router.post('/:id/message', usedItemController.sendMessage);
 router.patch('/:id/messages/mark-as-read', usedItemController.markMessagesAsRead);
 router.get('/:id/messages', usedItemController.getMessages);
 router.post('/:id/report', usedItemController.reportItem);
+router.post('/:id/review', usedItemController.createItemReview);
 
 // Public route - must be last to avoid matching other patterns
 router.get('/:id', usedItemController.getUsedItemById);

@@ -53,6 +53,7 @@ interface UsedItemDetail {
     savedBy: number;
   };
   similarItems: SimilarItem[];
+  reviews?: ReviewItem[];
 }
 
 interface SimilarItem {
@@ -61,6 +62,18 @@ interface SimilarItem {
   price: number;
   photos: string[];
   location: string;
+}
+
+interface ReviewItem {
+  id: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+  reviewer: {
+    id: string;
+    name: string;
+    profilePhoto?: string | null;
+  };
 }
 
 interface RecentViewedItem {
@@ -85,6 +98,11 @@ const UsedItemDetail = () => {
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     if (!id || fetchedIds.current.has(id)) return;
@@ -127,6 +145,7 @@ const UsedItemDetail = () => {
       };
       setItem(preparedItem);
       setSimilarItems(payload.similarItems || []);
+      setReviews(payload.reviews || []);
       saveRecentlyViewedItem(preparedItem);
     } catch (error) {
       console.error('Failed to fetch item:', error);
@@ -188,6 +207,38 @@ const UsedItemDetail = () => {
   const handleContactSeller = () => {
     if (!item?.seller.id) return;
     navigate('/messenger', { state: { contactChatId: item.seller.id } });
+  };
+
+  const handleSubmitReview = async () => {
+    if (!user) {
+      toast.error('Please login to leave a review');
+      navigate('/login');
+      return;
+    }
+
+    if (!reviewComment.trim()) {
+      toast.error('Please enter a short review comment');
+      return;
+    }
+
+    if (!item?.seller.id) return;
+
+    setSubmittingReview(true);
+    try {
+      await api.post(`/api/used-items/${id}/review`, {
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      });
+      toast.success('Review submitted successfully');
+      setShowReviewDialog(false);
+      setReviewComment('');
+      setReviewRating(5);
+      fetchItemDetails();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Failed to submit review');
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
   if (loading) {
@@ -276,10 +327,11 @@ const UsedItemDetail = () => {
             {/* Description */}
             <Card className="p-6 mt-6">
               <Tabs defaultValue="description">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="description">Description</TabsTrigger>
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="seller">Seller Info</TabsTrigger>
+                  <TabsTrigger value="reviews">Reviews</TabsTrigger>
                 </TabsList>
                 <TabsContent value="description" className="pt-4">
                   <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
@@ -346,9 +398,62 @@ const UsedItemDetail = () => {
                           <MessageCircle className="w-4 h-4 mr-1" />
                           Message
                         </Button>
+                        {user && user.id !== item.seller.id ? (
+                          <Button size="sm" onClick={() => setShowReviewDialog(true)}>
+                            Give Review
+                          </Button>
+                        ) : !user ? (
+                          <Button size="sm" onClick={() => navigate('/login')}>
+                            Give Review
+                          </Button>
+                        ) : null}
                       </div>
                     </div>
                   </div>
+                </TabsContent>
+                <TabsContent value="reviews" className="pt-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-lg">Recent Reviews</h3>
+                      <p className="text-sm text-gray-500">Real feedback from buyers about this seller.</p>
+                    </div>
+                    {user && user.id !== item.seller.id ? (
+                      <Button size="sm" onClick={() => setShowReviewDialog(true)}>Give Review</Button>
+                    ) : !user ? (
+                      <Button size="sm" variant="outline" onClick={() => navigate('/login')}>Give Review</Button>
+                    ) : null}
+                  </div>
+
+                  {reviews.length > 0 ? (
+                    <div className="space-y-3">
+                      {reviews.map(review => (
+                        <div key={review.id} className="rounded-lg border border-gray-200 p-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="w-10 h-10">
+                                <AvatarImage src={review.reviewer.profilePhoto || undefined} />
+                                <AvatarFallback>{review.reviewer.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{review.reviewer.name}</p>
+                                <p className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 text-yellow-500">
+                              {Array.from({ length: 5 }).map((_, index) => (
+                                <Star key={index} className={`w-4 h-4 ${index < review.rating ? 'fill-current' : 'text-gray-300'}`} />
+                              ))}
+                            </div>
+                          </div>
+                          {review.comment && <p className="mt-3 text-sm text-gray-600">{review.comment}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+                      No reviews yet for this seller.
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </Card>
@@ -521,6 +626,52 @@ const UsedItemDetail = () => {
                 {sending ? 'Sending...' : 'Send Message'}
               </Button>
               <Button variant="outline" onClick={() => setShowMessageDialog(false)} className="flex-1">Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Review Dialog */}
+      <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Write a review</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Rating</label>
+              <div className="flex items-center gap-2 mt-2">
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const value = index + 1;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setReviewRating(value)}
+                      className="text-2xl text-yellow-500"
+                    >
+                      <Star className={`w-6 h-6 ${value <= reviewRating ? 'fill-current' : 'text-gray-300'}`} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Comment</label>
+              <Textarea
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                placeholder="Share your experience with this seller"
+                className="mt-2 min-h-[100px]"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowReviewDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmitReview} disabled={submittingReview}>
+                {submittingReview ? 'Submitting...' : 'Submit Review'}
+              </Button>
             </div>
           </div>
         </DialogContent>

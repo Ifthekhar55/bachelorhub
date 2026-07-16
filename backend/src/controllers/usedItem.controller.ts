@@ -137,6 +137,20 @@ export class UsedItemController {
         include: { postedBy: { select: { name: true, isVerified: true } } },
       });
 
+      const reviews = await prisma.review.findMany({
+        where: { itemId: id },
+        include: {
+          reviewer: {
+            select: {
+              id: true,
+              name: true,
+              profilePhoto: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
       // Map postedBy to seller for frontend consistency
       const { postedBy, ...itemRest } = item;
       const mapped_item = {
@@ -155,7 +169,7 @@ export class UsedItemController {
         };
       });
 
-      res.json({ item: mapped_item, similarItems: mapped_similarItems });
+      res.json({ item: mapped_item, similarItems: mapped_similarItems, reviews });
     } catch (error) {
       console.error('Get used item error:', error);
       res.status(500).json({ error: 'Failed to fetch item' });
@@ -558,6 +572,98 @@ export class UsedItemController {
     } catch (error) {
       console.error('Get messages error:', error);
       res.status(500).json({ error: 'Failed to fetch messages' });
+    }
+  };
+
+  getItemReviews = async (req: Request, res: Response) => {
+    try {
+      const itemId = String(req.params.id);
+
+      const reviews = await prisma.review.findMany({
+        where: { itemId },
+        include: {
+          reviewer: {
+            select: {
+              id: true,
+              name: true,
+              profilePhoto: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json({ reviews });
+    } catch (error) {
+      console.error('Get item reviews error:', error);
+      res.status(500).json({ error: 'Failed to fetch reviews' });
+    }
+  };
+
+  createItemReview = async (req: Request, res: Response) => {
+    try {
+      const reviewerId = String((req as any).user?.userId);
+      const itemId = String(req.params.id);
+      const { rating, comment } = req.body;
+      const parsedRating = Number(rating);
+
+      if (!Number.isFinite(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+        return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+      }
+
+      const item = await prisma.usedItem.findUnique({
+        where: { id: itemId },
+        select: { postedById: true },
+      });
+
+      if (!item) {
+        return res.status(404).json({ error: 'Item not found' });
+      }
+
+      if (item.postedById === reviewerId) {
+        return res.status(400).json({ error: 'You cannot review your own item' });
+      }
+
+      const review = await prisma.review.create({
+        data: {
+          reviewerId,
+          revieweeId: item.postedById,
+          itemId,
+          rating: parsedRating,
+          comment: comment?.trim() || null,
+        },
+        include: {
+          reviewer: {
+            select: {
+              id: true,
+              name: true,
+              profilePhoto: true,
+            },
+          },
+        },
+      });
+
+      const reviewee = await prisma.user.findUnique({ where: { id: item.postedById } });
+      if (reviewee) {
+        const currentCount = reviewee.reviewsCount || 0;
+        const currentRating = reviewee.rating || 0;
+        const nextRating = currentCount === 0
+          ? parsedRating
+          : Number(((currentRating * currentCount + parsedRating) / (currentCount + 1)).toFixed(1));
+
+        await prisma.user.update({
+          where: { id: item.postedById },
+          data: {
+            rating: nextRating,
+            reviewsCount: currentCount + 1,
+          },
+        });
+      }
+
+      res.status(201).json({ review });
+    } catch (error) {
+      console.error('Create item review error:', error);
+      res.status(500).json({ error: 'Failed to submit review' });
     }
   };
 
