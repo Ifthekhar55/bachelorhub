@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
   User, Mail, Phone, MapPin, Calendar, Shield, Settings,
-  Edit2, Camera, CheckCircle, XCircle, Save, X,
+  Edit2, CheckCircle, XCircle, Save, X,
   Globe, Briefcase, GraduationCap, Heart, Star,
   MessageCircle, Users, Home, DollarSign, FileText, Bell
 } from 'lucide-react'
@@ -358,14 +358,6 @@ const Profile = ({ forceEdit = false }: { forceEdit?: boolean }) => {
                     {profile.name?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                {isOwnProfile && isEditing && (
-                  <div className="absolute bottom-0 right-0 flex flex-col gap-2">
-                    <label className="bg-green-600 text-white p-2 rounded-full cursor-pointer hover:bg-green-700 transition shadow-lg">
-                      <Camera className="w-4 h-4" />
-                      <input ref={profilePhotoInputRef} type="file" className="hidden" accept="image/*" onChange={handleProfilePhotoChange} />
-                    </label>
-                  </div>
-                )}
               </div>
             </div>
             {isOwnProfile && !isEditing && (

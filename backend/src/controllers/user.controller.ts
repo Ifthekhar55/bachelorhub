@@ -201,14 +201,18 @@ export class UserController {
 
       // Handle existing profile photo or upload new one
       let profilePhoto: string | null | undefined = profilePhotoUrl;
-      const requestWithFiles = req as Request & { files?: MulterFile[] };
+      const requestWithFiles = req as Request & { files?: MulterFile[] | Record<string, MulterFile[]> };
       const shouldRemoveProfilePhoto = removeProfilePhoto === 'true' || removeProfilePhoto === true;
       const existingUser = await prisma.user.findUnique({ where: { id: userId }, select: { profilePhoto: true } });
+
+      const uploadedFiles = Array.isArray(requestWithFiles.files)
+        ? requestWithFiles.files
+        : Object.values(requestWithFiles.files ?? {}).flat();
       
       // If there are files and one might be a profile photo
-      if (requestWithFiles.files && requestWithFiles.files.length > 0) {
+      if (uploadedFiles.length > 0) {
         // Try to find profilePhoto in files (for backward compatibility)
-        const profilePhotoFile = requestWithFiles.files.find(f => f.fieldname === 'profilePhoto');
+        const profilePhotoFile = uploadedFiles.find((f: any) => f.fieldname === 'profilePhoto');
         if (profilePhotoFile) {
           try {
             profilePhoto = await cloudinaryService.uploadImage(profilePhotoFile, 'profiles');
@@ -240,8 +244,8 @@ export class UserController {
       
       // Handle food photos
       let foodPhotos: string[] = [];
-      if (requestWithFiles.files) {
-        const foodPhotoFiles = requestWithFiles.files.filter(f => f.fieldname === 'foodPhotos' || f.fieldname === 'photos');
+      if (uploadedFiles.length > 0) {
+        const foodPhotoFiles = uploadedFiles.filter((f: any) => f.fieldname === 'foodPhotos' || f.fieldname === 'photos');
         for (const file of foodPhotoFiles) {
           try {
             const uploadedUrl = await cloudinaryService.uploadImage(file, 'food-photos');
