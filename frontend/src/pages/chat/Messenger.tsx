@@ -956,9 +956,9 @@ const Messenger = () => {
                 >
                   <div className="relative">
                     <Avatar className="w-12 h-12">
-                      {conv.avatar ? (
-                        <AvatarImage src={conv.avatar} />
-                      ) : null}
+                      { (conv.avatar || (conv.id === user?.id ? user?.profilePhoto : undefined)) ? (
+                        <AvatarImage src={conv.avatar || (conv.id === user?.id ? user?.profilePhoto : '')} />
+                      ) : null }
                       <AvatarFallback>{conv.name[0]}</AvatarFallback>
                     </Avatar>
                     {conv.online && (
@@ -997,8 +997,8 @@ const Messenger = () => {
                     <ArrowLeft className="w-4 h-4" />
                   </button>
                   <Avatar className="w-10 h-10">
-                    {selectedChat.avatar ? (
-                      <AvatarImage src={selectedChat.avatar} />
+                    {(selectedChat.avatar || user?.profilePhoto) ? (
+                      <AvatarImage src={selectedChat.avatar || user?.profilePhoto || ''} />
                     ) : null}
                     <AvatarFallback>{selectedChat.name[0]}</AvatarFallback>
                   </Avatar>
