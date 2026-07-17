@@ -6,6 +6,7 @@ import {
   Home,
   Search,
   Users,
+  Coffee,
   MessageCircle,
   Bell,
   User,
@@ -148,7 +149,7 @@ const Navbar = () => {
   const navLinks = [
     { path: '/', label: 'Home', icon: Home },
     { path: '/feed', label: 'Find House', icon: Search },
-    { path: '/homechef', label: 'Homechef', icon: Users },
+    { path: '/homechef', label: 'Homechef', icon: Coffee },
     { path: '/used-items', label: 'Used Items', icon: ShoppingBag },
     { path: '/community', label: 'Community', icon: Users },
     { path: '/blood-requests', label: 'Need Blood?', icon: Droplet },
