@@ -358,6 +358,15 @@ const Profile = ({ forceEdit = false }: { forceEdit?: boolean }) => {
                     {profile.name?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
+                {isOwnProfile && isEditing && (
+                  <input
+                    ref={profilePhotoInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleProfilePhotoChange}
+                  />
+                )}
               </div>
             </div>
             {isOwnProfile && !isEditing && (
