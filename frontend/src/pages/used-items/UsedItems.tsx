@@ -7,6 +7,7 @@ import {
   DollarSign, Tag, Star, Shield, TrendingUp, Eye, MoreVertical
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import {
@@ -593,9 +594,12 @@ const UsedItems = () => {
                   <div className="px-4 pb-4">
                     <div className="flex items-center justify-between gap-3 pt-3 border-t dark:border-gray-700">
                       <div className="flex items-center gap-2 flex-1">
-                        <div className="w-6 h-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                          {item.seller.name.charAt(0).toUpperCase()}
-                        </div>
+                          <Avatar className="w-6 h-6">
+                            {item.seller.profilePhoto ? (
+                              <AvatarImage src={item.seller.profilePhoto} />
+                            ) : null}
+                            <AvatarFallback>{item.seller.name.charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className="text-sm font-medium truncate">{item.seller.name}</span>

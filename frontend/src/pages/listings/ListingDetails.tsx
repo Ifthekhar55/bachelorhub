@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { toast } from 'react-hot-toast'
 import api from '../../services/api'
 import { buildShareUrl } from '../../utils/share'
@@ -57,6 +58,7 @@ const ListingDetail = () => {
             phone: found.landlord?.phone ?? 'N/A',
             isVerified: found.landlord?.isVerified ?? false,
             chatId: found.landlord?.chatId,
+            profilePhoto: found.landlord?.profilePhoto ?? found.landlord?.avatar ?? undefined,
           },
         })
 
@@ -330,9 +332,12 @@ const ListingDetail = () => {
             <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
               <h3 className="font-semibold text-lg mb-3">Posted by</h3>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                  {listing.landlord?.name?.[0] ?? 'H'}
-                </div>
+                <Avatar className="w-12 h-12">
+                  {listing.landlord?.profilePhoto ? (
+                    <AvatarImage src={listing.landlord.profilePhoto} />
+                  ) : null}
+                  <AvatarFallback>{listing.landlord?.name?.[0] ?? 'H'}</AvatarFallback>
+                </Avatar>
                 <div>
                   <div className="font-medium flex items-center gap-1">
                     {listing.landlord?.name ?? 'Unknown Host'}

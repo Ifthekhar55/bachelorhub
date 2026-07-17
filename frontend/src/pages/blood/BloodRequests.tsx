@@ -20,6 +20,7 @@ import {
   LogIn,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -46,6 +47,7 @@ interface BloodRequest {
     name: string;
     phone: string;
     isVerified: boolean;
+    profilePhoto?: string;
   };
   donorResponses: any[];
   createdAt: string;
@@ -551,6 +553,14 @@ const BloodRequests = () => {
 
                       {/* Right Section - Requester Info */}
                       <div className="md:text-right border-t md:border-t-0 pt-4 md:pt-0">
+                        <div className="flex items-center gap-2 justify-end">
+                          <Avatar className="w-10 h-10">
+                            {request.requester?.profilePhoto ? (
+                              <AvatarImage src={request.requester.profilePhoto} />
+                            ) : null}
+                            <AvatarFallback>{request.requester.name?.[0] ?? 'U'}</AvatarFallback>
+                          </Avatar>
+                        </div>
                         <div className="text-sm text-gray-500">Posted by</div>
                         <div className="font-medium">{request.requester.name}</div>
                         <div className="text-sm text-gray-500">{request.requester.phone}</div>
