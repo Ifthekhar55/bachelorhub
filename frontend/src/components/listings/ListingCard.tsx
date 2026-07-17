@@ -34,13 +34,6 @@ const ListingCard = ({ listing }: ListingCardProps) => {
                 Verified
               </Badge>
             )}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="absolute top-2 right-2 bg-white/80 hover:bg-white"
-            >
-              <Heart className="w-4 h-4" />
-            </Button>
           </div>
         </Link>
       </div>
