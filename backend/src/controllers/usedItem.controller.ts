@@ -1,7 +1,26 @@
 import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 import { prisma } from '../prisma';
 import { cloudinaryService } from '../services/cloudinary.service';
 import { getSocketServer } from '../socket';
+
+const getUserIdFromAuthHeader = (req: Request): string | null => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.split(' ')[1];
+  if (!token) return null;
+
+  try {
+    const secret = process.env.JWT_SECRET || 'secret';
+    const payload = jwt.verify(token, secret) as { userId: string };
+    return payload.userId;
+  } catch (error) {
+    return null;
+  }
+};
 
 export class UsedItemController {
   getUsedItems = async (req: Request, res: Response) => {
@@ -52,35 +71,47 @@ export class UsedItemController {
         ];
       }
 
+      const userId = getUserIdFromAuthHeader(req);
+
+      const includeOptions: any = {
+        postedBy: {
+          select: {
+            id: true,
+            name: true,
+            isVerified: true,
+            profilePhoto: true,
+          },
+        },
+        _count: {
+          select: { savedBy: true },
+        },
+      };
+
+      if (userId) {
+        includeOptions.savedBy = {
+          where: { userId },
+          select: { id: true },
+        };
+      }
+
       const [items, total] = await Promise.all([
         prisma.usedItem.findMany({
           where,
           skip,
           take: Number(limit),
           orderBy,
-          include: {
-            postedBy: {
-              select: {
-                id: true,
-                name: true,
-                isVerified: true,
-                profilePhoto: true,
-              },
-            },
-            _count: {
-              select: { savedBy: true },
-            },
-          },
+          include: includeOptions,
         }),
         prisma.usedItem.count({ where }),
       ]);
 
       // Map postedBy to seller for frontend consistency
       const items_mapped = items.map((item: any) => {
-        const { postedBy, ...rest } = item;
+        const { postedBy, savedBy, ...rest } = item;
         return {
           ...rest,
           seller: postedBy,
+          isSaved: userId ? Boolean(savedBy?.length) : false,
         };
       });
 
@@ -106,25 +137,34 @@ export class UsedItemController {
       // Increment view count
       await prisma.usedItem.update({ where: { id }, data: { viewCount: { increment: 1 } } });
 
-      const item = await prisma.usedItem.findUnique({
-        where: { id },
-        include: {
-          postedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              isVerified: true,
-              profilePhoto: true,
-              createdAt: true,
-              rating: true,
-              reviewsCount: true,
-            },
+      const userId = getUserIdFromAuthHeader(req);
+      const includeOptions: any = {
+        postedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            isVerified: true,
+            profilePhoto: true,
+            createdAt: true,
+            rating: true,
+            reviewsCount: true,
           },
-          savedBy: true,
         },
-      });
+      };
+
+      if (userId) {
+        includeOptions.savedBy = {
+          where: { userId },
+          select: { id: true },
+        };
+      }
+
+      const item = (await prisma.usedItem.findUnique({
+        where: { id },
+        include: includeOptions,
+      })) as any;
 
       if (!item) {
         return res.status(404).json({ error: 'Item not found' });
@@ -152,13 +192,14 @@ export class UsedItemController {
       });
 
       // Map postedBy to seller for frontend consistency
-      const { postedBy, ...itemRest } = item;
+      const { postedBy, savedBy, ...itemRest } = item;
       const mapped_item = {
         ...itemRest,
         seller: {
           ...postedBy,
           listingsCount: 0,
         },
+        isSaved: userId ? Boolean(savedBy?.length) : false,
       };
 
       const mapped_similarItems = similarItems.map((si: any) => {

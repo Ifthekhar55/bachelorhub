@@ -163,18 +163,25 @@ const UsedItems = () => {
     }
   };
 
-  const handleSaveItem = async (itemId: string) => {
+  const handleSaveItem = async (itemId: string, currentlySaved: boolean) => {
     if (!user) {
       toast.error('Please login to save items');
       navigate('/login');
       return;
     }
+
     try {
-      await api.post(`/api/used-items/${itemId}/save`);
-      toast.success('Item saved to favorites!');
+      if (currentlySaved) {
+        await api.delete(`/api/used-items/${itemId}/save`);
+        toast.success('Item removed from favorites');
+      } else {
+        await api.post(`/api/used-items/${itemId}/save`);
+        toast.success('Item saved to favorites!');
+      }
       fetchItems();
     } catch (error) {
-      toast.error('Failed to save item');
+      console.error('Save toggle failed', error);
+      toast.error('Failed to update favorite status');
     }
   };
 
@@ -530,8 +537,9 @@ const UsedItems = () => {
                     />
                     <div className="absolute top-2 left-2 z-10 flex items-center gap-2">
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleSaveItem(item.id); }}
+                        onClick={(e) => { e.stopPropagation(); handleSaveItem(item.id, !!item.isSaved); }}
                         className="bg-white dark:bg-gray-800 p-2 rounded-full shadow-md hover:scale-110 transition-transform"
+                        aria-label={item.isSaved ? 'Unsave item' : 'Save item'}
                       >
                         <Heart className={`w-4 h-4 ${item.isSaved ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
                       </button>

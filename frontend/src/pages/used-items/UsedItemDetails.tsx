@@ -137,12 +137,14 @@ const UsedItemDetail = () => {
       const response = await api.get(`/api/used-items/${id}`);
       const payload = response.data;
       const backendItem = payload.item ?? payload;
+      const { savedBy, ...backendItemWithoutSavedBy } = backendItem;
       const preparedItem: UsedItemDetail = {
-        ...backendItem,
+        ...backendItemWithoutSavedBy,
         contactNumber: backendItem.contact ?? backendItem.contactNumber,
         deliveryOption: backendItem.delivery ?? backendItem.deliveryOption,
         isNegotiable: backendItem.negotiable ?? backendItem.isNegotiable,
         isUrgent: backendItem.isUrgent ?? backendItem.isUrgent,
+        isSaved: backendItem.isSaved ?? false,
       };
       setItem(preparedItem);
       setSimilarItems(payload.similarItems || []);
@@ -163,12 +165,19 @@ const UsedItemDetail = () => {
       navigate('/login');
       return;
     }
+
     try {
-      await api.post(`/api/used-items/${id}/save`);
-      toast.success('Item saved to favorites!');
+      if (item?.isSaved) {
+        await api.delete(`/api/used-items/${id}/save`);
+        toast.success('Item removed from favorites');
+      } else {
+        await api.post(`/api/used-items/${id}/save`);
+        toast.success('Item saved to favorites!');
+      }
       fetchItemDetails();
     } catch (error) {
-      toast.error('Failed to save item');
+      console.error('Save toggle failed', error);
+      toast.error('Failed to update favorite status');
     }
   };
 
