@@ -11,6 +11,14 @@ import { Card } from '../../components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Badge } from '../../components/ui/badge'
 import { Input } from '../../components/ui/input'
+import { Textarea } from '../../components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../../components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -59,6 +67,10 @@ const RoommateFinder = () => {
   const [activeTab, setActiveTab] = useState<string>('profile')
   const [savedChefs, setSavedChefs] = useState<string[]>([])
   const [showBooking, setShowBooking] = useState(false)
+  const [showReviewDialog, setShowReviewDialog] = useState(false)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [submittingReview, setSubmittingReview] = useState(false)
   const [bookingPackage, setBookingPackage] = useState('')
   const [bookingDate, setBookingDate] = useState('')
   const [bookingTime, setBookingTime] = useState('')
@@ -75,6 +87,35 @@ const RoommateFinder = () => {
   useEffect(() => {
     if (selectedChef) setActiveTab('profile')
   }, [selectedChef])
+
+  useEffect(() => {
+    if (!selectedChef?.id) return
+
+    const loadChefReviews = async () => {
+      try {
+        const response = await api.get(`/api/users/${selectedChef.id}/reviews`)
+        const reviews = response.data.reviews || []
+        const mappedReviews = reviews.map((review: any) => ({
+          id: review.id,
+          user: review.reviewer?.name || 'Anonymous',
+          rating: Number(review.rating) || 0,
+          text: review.comment || '',
+          createdAt: review.createdAt,
+        }))
+
+        setSelectedChef((prev) => prev && prev.id === selectedChef.id
+          ? { ...prev, reviewsList: mappedReviews, reviews: mappedReviews.length }
+          : prev)
+        setChefProfiles((prev) => prev.map((chef) => chef.id === selectedChef.id
+          ? { ...chef, reviewsList: mappedReviews, reviews: mappedReviews.length }
+          : chef))
+      } catch (error) {
+        console.error('Failed to load chef reviews:', error)
+      }
+    }
+
+    loadChefReviews()
+  }, [selectedChef?.id])
 
   const fetchHomechefs = async () => {
     try {
@@ -213,6 +254,70 @@ const RoommateFinder = () => {
       console.error('Failed to confirm booking', error)
       const message = error?.response?.data?.error || 'Failed to confirm booking. Please try again.'
       toast.error(message)
+    }
+  }
+
+  const handleSubmitReview = async () => {
+    if (!selectedChef) return
+
+    if (!user?.id) {
+      toast.error('Please login to leave a review')
+      navigate('/login')
+      return
+    }
+
+    if (!reviewComment.trim()) {
+      toast.error('Please enter a short review comment')
+      return
+    }
+
+    try {
+      setSubmittingReview(true)
+      const response = await api.post(`/api/users/${selectedChef.id}/review`, {
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      })
+
+      const newReview = response.data.review
+      const previousCount = selectedChef.reviews || selectedChef.reviewsList.length
+      const nextCount = previousCount + 1
+      const nextRating = previousCount === 0
+        ? reviewRating
+        : Number(((selectedChef.rating * previousCount + reviewRating) / nextCount).toFixed(1))
+
+      const mappedReview = {
+        id: newReview?.id,
+        user: newReview?.reviewer?.name || user.name || 'You',
+        rating: Number(newReview?.rating) || reviewRating,
+        text: newReview?.comment || reviewComment.trim(),
+        createdAt: newReview?.createdAt,
+      }
+
+      const updatedReviews = [mappedReview, ...selectedChef.reviewsList]
+      const updatedChef = {
+        ...selectedChef,
+        reviewsList: updatedReviews,
+        reviews: nextCount,
+        rating: nextRating,
+      }
+
+      setSelectedChef(updatedChef)
+      setChefProfiles((prev) => prev.map((chef) => chef.id === selectedChef.id ? {
+        ...chef,
+        reviewsList: updatedReviews,
+        reviews: nextCount,
+        rating: nextRating,
+      } : chef))
+      setShowReviewDialog(false)
+      setReviewComment('')
+      setReviewRating(5)
+      toast.success('Review submitted successfully')
+    } catch (error: any) {
+      console.error('Failed to submit review', error)
+      const message = error?.response?.data?.error || 'Failed to submit review. Please try again.'
+      toast.error(message)
+    } finally {
+      setSubmittingReview(false)
     }
   }
 
@@ -727,6 +832,20 @@ const RoommateFinder = () => {
 
                   {activeTab === 'reviews' && (
                     <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-lg">Recent Reviews</h3>
+                        <Button size="sm" onClick={() => {
+                          if (!user?.id) {
+                            toast.error('Please login to leave a review')
+                            navigate('/login')
+                            return
+                          }
+                          setShowReviewDialog(true)
+                        }}>
+                          Add Review
+                        </Button>
+                      </div>
+
                       {selectedChef.reviewsList.length > 0 ? (
                         selectedChef.reviewsList.map((review, idx) => (
                           <Card key={idx} className="p-4 dark:bg-gray-700">
@@ -872,6 +991,45 @@ const RoommateFinder = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Write a review</DialogTitle>
+            <DialogDescription>Share your experience with this homechef so others can learn from it.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setReviewRating(value)}
+                  className="rounded-full p-1 transition hover:scale-110"
+                >
+                  <Star className={`w-6 h-6 ${value <= reviewRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                </button>
+              ))}
+            </div>
+
+            <Textarea
+              value={reviewComment}
+              onChange={(e) => setReviewComment(e.target.value)}
+              placeholder="Write a short review about your experience..."
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowReviewDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmitReview} disabled={submittingReview}>
+                {submittingReview ? 'Submitting...' : 'Submit Review'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

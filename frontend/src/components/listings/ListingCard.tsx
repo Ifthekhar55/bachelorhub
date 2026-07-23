@@ -29,7 +29,7 @@ const ListingCard = ({ listing }: ListingCardProps) => {
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
             {listing.verified && (
-              <Badge className="absolute top-2 left-2 bg-green-500">
+              <Badge className="absolute top-2 left-2 bg-green-600 text-white dark:bg-green-700 dark:text-green-50">
                 <Star className="w-3 h-3 mr-1 fill-current" />
                 Verified
               </Badge>

@@ -356,7 +356,7 @@ const FindHouse: React.FC = () => {
 
                     <div className="p-5">
                       <div className="flex items-start justify-between mb-2">
-                        <span className="rounded-lg bg-green-100 px-3 py-1 text-xs text-green-700">
+                        <span className="inline-flex items-center rounded-lg bg-green-100 px-3 py-1 text-xs font-medium text-green-700 ring-1 ring-green-200 dark:bg-green-900/40 dark:text-green-300 dark:ring-green-800/50">
                           ✓ Verified
                         </span>
                         <DropdownMenu>

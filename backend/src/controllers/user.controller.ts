@@ -113,6 +113,102 @@ export class UserController {
     }
   };
 
+  getUserReviews = async (req: Request, res: Response) => {
+    try {
+      const revieweeId = String(req.params.userId);
+      const reviews = await prisma.review.findMany({
+        where: { revieweeId },
+        include: {
+          reviewer: {
+            select: {
+              id: true,
+              name: true,
+              profilePhoto: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json({
+        reviews: reviews.map((review) => ({
+          id: review.id,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+          reviewer: review.reviewer,
+        })),
+      });
+    } catch (error) {
+      console.error('Get user reviews error:', error);
+      res.status(500).json({ error: 'Failed to get reviews' });
+    }
+  };
+
+  createUserReview = async (req: Request, res: Response) => {
+    try {
+      const reviewerId = String((req as any).user?.userId);
+      const revieweeId = String(req.params.userId);
+      const { rating, comment } = req.body;
+      const parsedRating = Number(rating);
+
+      if (!Number.isFinite(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+        return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+      }
+
+      const reviewee = await prisma.user.findUnique({
+        where: { id: revieweeId },
+        select: { id: true, reviewsCount: true, rating: true },
+      });
+
+      if (!reviewee) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (revieweeId === reviewerId) {
+        return res.status(400).json({ error: 'You cannot review your own profile' });
+      }
+
+      const review = await prisma.review.create({
+        data: {
+          reviewerId,
+          revieweeId,
+          itemId: null,
+          rating: parsedRating,
+          comment: comment?.trim() || null,
+        },
+        include: {
+          reviewer: {
+            select: {
+              id: true,
+              name: true,
+              profilePhoto: true,
+            },
+          },
+        },
+      });
+
+      const currentCount = reviewee.reviewsCount || 0;
+      const currentRating = reviewee.rating || 0;
+      const nextRating = currentCount === 0
+        ? parsedRating
+        : Number(((currentRating * currentCount + parsedRating) / (currentCount + 1)).toFixed(1));
+
+      await prisma.user.update({
+        where: { id: revieweeId },
+        data: {
+          rating: nextRating,
+          reviewsCount: currentCount + 1,
+        },
+      });
+
+      res.status(201).json({ review });
+    } catch (error) {
+      console.error('Create user review error:', error);
+      res.status(500).json({ error: 'Failed to submit review' });
+    }
+  };
+
   getCurrentUser = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.userId;

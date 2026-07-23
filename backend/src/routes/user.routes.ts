@@ -15,6 +15,8 @@ router.get('/me', userController.getCurrentUser);
 router.get('/all', userController.getAllUsers);
 router.get('/settings', userController.getSettings);
 router.get('/notifications', userController.getNotifications);
+router.get('/:userId/reviews', userController.getUserReviews);
+router.post('/:userId/review', userController.createUserReview);
 router.put('/notifications/read/:id', userController.markNotificationAsRead);
 router.put('/notifications/read-all', userController.markAllNotificationsAsRead);
 router.put('/profile', uploadProfileAndFoodPhotos, userController.updateProfile);
