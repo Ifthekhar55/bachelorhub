@@ -8,9 +8,9 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Prisma } from '@prisma/client';
 import nodemailer from 'nodemailer';
 import { prisma } from '../prisma';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
-import { authenticate } from '../middleware/auth.middleware';
 
 const OTP_LENGTH = 6;
 const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -23,25 +23,36 @@ const otpStore = new Map<string, {
   userId: string;
 }>();
 
-const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5003}`
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
-const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || ''
-const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET || ''
+const BACKEND_URL =
+  process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5003}`;
 
-const createOrFindSocialUser = async (email: string, name: string, provider: string) => {
+const FRONTEND_URL =
+  process.env.FRONTEND_URL || 'http://localhost:3000';
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || '';
+const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET || '';
+
+const createOrFindSocialUser = async (
+  email: string,
+  name: string,
+  provider: string
+) => {
   if (!email) {
-    throw new Error('Email is required for social login')
+    throw new Error('Email is required for social login');
   }
 
-  const existingUser = await prisma.user.findUnique({ where: { email } })
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
   if (existingUser) {
-    return existingUser
+    return existingUser;
   }
 
-  const randomPassword = crypto.randomBytes(16).toString('hex')
-  const hashedPassword = await bcrypt.hash(randomPassword, 10)
+  const randomPassword = crypto.randomBytes(16).toString('hex');
+  const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
   return prisma.user.create({
     data: {
@@ -51,8 +62,8 @@ const createOrFindSocialUser = async (email: string, name: string, provider: str
       password: hashedPassword,
       isVerified: true,
     },
-  })
-}
+  });
+};
 
 const configurePassport = () => {
   if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
@@ -65,16 +76,32 @@ const configurePassport = () => {
         },
         async (_accessToken, _refreshToken, profile, done) => {
           try {
-            const email = profile.emails?.[0]?.value
-            const name = [profile.name?.givenName, profile.name?.familyName].filter(Boolean).join(' ').trim() || profile.displayName || 'Google User'
-            const user = await createOrFindSocialUser(email ?? '', name, 'google')
-            done(null, user)
+            const email = profile.emails?.[0]?.value;
+
+            const name =
+              [
+                profile.name?.givenName,
+                profile.name?.familyName,
+              ]
+                .filter(Boolean)
+                .join(' ')
+                .trim() ||
+              profile.displayName ||
+              'Google User';
+
+            const user = await createOrFindSocialUser(
+              email ?? '',
+              name,
+              'google'
+            );
+
+            done(null, user);
           } catch (err) {
-            done(err as Error)
+            done(err as Error);
           }
         }
       )
-    )
+    );
   }
 
   if (FACEBOOK_APP_ID && FACEBOOK_APP_SECRET) {
@@ -84,27 +111,55 @@ const configurePassport = () => {
           clientID: FACEBOOK_APP_ID,
           clientSecret: FACEBOOK_APP_SECRET,
           callbackURL: `${BACKEND_URL}/api/auth/facebook/callback`,
-          profileFields: ['id', 'displayName', 'emails', 'name'],
+          profileFields: [
+            'id',
+            'displayName',
+            'emails',
+            'name',
+          ],
         },
         async (_accessToken, _refreshToken, profile, done) => {
           try {
-            const email = profile.emails?.[0]?.value
-            const name = profile.displayName || [profile.name?.givenName, profile.name?.familyName].filter(Boolean).join(' ').trim() || 'Facebook User'
-            const user = await createOrFindSocialUser(email ?? '', name, 'facebook')
-            done(null, user)
+            const email = profile.emails?.[0]?.value;
+
+            const name =
+              profile.displayName ||
+              [
+                profile.name?.givenName,
+                profile.name?.familyName,
+              ]
+                .filter(Boolean)
+                .join(' ')
+                .trim() ||
+              'Facebook User';
+
+            const user = await createOrFindSocialUser(
+              email ?? '',
+              name,
+              'facebook'
+            );
+
+            done(null, user);
           } catch (err) {
-            done(err as Error)
+            done(err as Error);
           }
         }
       )
-    )
+    );
   }
-}
+};
 
-configurePassport()
+configurePassport();
+
+/* =========================================================
+   SMTP CONFIGURATION
+   ========================================================= */
 
 const smtpHost = process.env.SMTP_HOST;
-const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : undefined;
+const smtpPort = process.env.SMTP_PORT
+  ? parseInt(process.env.SMTP_PORT, 10)
+  : undefined;
+
 const smtpUser = process.env.SMTP_USER;
 const smtpPass = process.env.SMTP_PASS;
 
@@ -113,25 +168,57 @@ let transporter: nodemailer.Transporter | null = null;
 if (smtpHost && smtpPort && smtpUser && smtpPass) {
   transporter = nodemailer.createTransport({
     host: smtpHost,
-    port: smtpPort,
-    secure: false,
-    auth: { user: smtpUser, pass: smtpPass },
+
+    // Gmail SMTP SSL port
+    port: 465,
+
+    // SSL/TLS enabled
+    secure: true,
+
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
   });
+
+  console.log('📧 SMTP transporter configured');
+  console.log(`📧 SMTP Host: ${smtpHost}`);
+  console.log(`📧 SMTP Port: ${smtpPort}`);
+  console.log(`📧 SMTP User: ${smtpUser}`);
+} else {
+  console.warn(
+    '⚠️ SMTP environment variables are missing. Email sending will not work.'
+  );
 }
 
-const passwordResetStore = new Map<string, {
-  token: string;
-  userId: string;
-  email: string;
-  expiresAt: Date;
-}>();
+/* =========================================================
+   PASSWORD RESET STORE
+   ========================================================= */
+
+const passwordResetStore = new Map<
+  string,
+  {
+    token: string;
+    userId: string;
+    email: string;
+    expiresAt: Date;
+  }
+>();
+
+/* =========================================================
+   OTP
+   ========================================================= */
 
 const generateOtp = () => {
-  return Math.floor(10 ** (OTP_LENGTH - 1) + Math.random() * 9 * 10 ** (OTP_LENGTH - 1)).toString();
+  return Math.floor(
+    10 ** (OTP_LENGTH - 1) +
+      Math.random() * 9 * 10 ** (OTP_LENGTH - 1)
+  ).toString();
 };
 
 const sendOtpMessage = async (email: string, otp: string) => {
   const subject = 'BachelorHub verification code';
+
   const text = `Your BachelorHub verification code is ${otp}. It expires in 5 minutes.`;
 
   if (transporter) {
@@ -141,6 +228,7 @@ const sendOtpMessage = async (email: string, otp: string) => {
       subject,
       text,
     });
+
     return;
   }
 
@@ -148,9 +236,15 @@ const sendOtpMessage = async (email: string, otp: string) => {
   console.log(`OTP for ${email}: ${otp}`);
 };
 
-const sendPasswordResetEmail = async (email: string, resetLink: string) => {
+const sendPasswordResetEmail = async (
+  email: string,
+  resetLink: string
+) => {
   const subject = 'Reset your BachelorHub password';
-  const text = `Use the following link to reset your password: ${resetLink}\n\nThis link expires in 15 minutes.`;
+
+  const text = `Use the following link to reset your password: ${resetLink}
+
+This link expires in 15 minutes.`;
 
   if (transporter) {
     await transporter.sendMail({
@@ -159,11 +253,13 @@ const sendPasswordResetEmail = async (email: string, resetLink: string) => {
       subject,
       text,
     });
+
     return true;
   }
 
   try {
     const testAccount = await nodemailer.createTestAccount();
+
     transporter = nodemailer.createTransport({
       host: testAccount.smtp.host,
       port: testAccount.smtp.port,
@@ -181,34 +277,76 @@ const sendPasswordResetEmail = async (email: string, resetLink: string) => {
       text,
     });
 
-    console.log('Password reset email sent via Ethereal test account');
-    console.log(nodemailer.getTestMessageUrl(info));
+    console.log(
+      'Password reset email sent via Ethereal test account'
+    );
+
+    console.log(
+      nodemailer.getTestMessageUrl(info)
+    );
+
     return true;
   } catch (error) {
-    console.error('Failed to send password reset email:', error);
-    console.log(`Password reset link for ${email}: ${resetLink}`);
+    console.error(
+      'Failed to send password reset email:',
+      error
+    );
+
+    console.log(
+      `Password reset link for ${email}: ${resetLink}`
+    );
+
     return false;
   }
 };
 
-const queueOtpForEmail = async (email: string, userId: string) => {
+const queueOtpForEmail = async (
+  email: string,
+  userId: string
+) => {
   const otpCode = generateOtp();
-  const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-  const resendAvailableAt = new Date(Date.now() + RESEND_COOLDOWN_MS);
 
-  otpStore.set(email, { otpCode, expiresAt, resendAvailableAt, userId });
+  const expiresAt = new Date(
+    Date.now() + OTP_TTL_MS
+  );
+
+  const resendAvailableAt = new Date(
+    Date.now() + RESEND_COOLDOWN_MS
+  );
+
+  otpStore.set(email, {
+    otpCode,
+    expiresAt,
+    resendAvailableAt,
+    userId,
+  });
+
   await sendOtpMessage(email, otpCode);
 
-  return { otpCode, expiresAt, resendAvailableAt };
+  return {
+    otpCode,
+    expiresAt,
+    resendAvailableAt,
+  };
 };
 
-// Test registration
+/* =========================================================
+   REGISTER
+   ========================================================= */
+
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const {
+      name,
+      email,
+      phone,
+      password,
+    } = req.body;
 
     if (!name || !email || !phone || !password) {
-      return res.status(400).json({ error: 'Missing required registration fields' });
+      return res.status(400).json({
+        error: 'Missing required registration fields',
+      });
     }
 
     const existingUser = await prisma.user.findFirst({
@@ -221,11 +359,16 @@ router.post('/register', async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(409).json({ error: 'Email or phone is already in use' });
+      return res.status(409).json({
+        error: 'Email or phone is already in use',
+      });
     }
-    
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
+
+    const hashedPassword = await bcrypt.hash(
+      password,
+      10
+    );
+
     const user = await prisma.user.create({
       data: {
         name,
@@ -235,105 +378,220 @@ router.post('/register', async (req, res) => {
       },
     });
 
-    await queueOtpForEmail(email, user.id);
+    await queueOtpForEmail(
+      email,
+      user.id
+    );
 
-    res.status(201).json({ message: 'User created, OTP sent', email: user.email });
+    res.status(201).json({
+      message: 'User created, OTP sent',
+      email: user.email,
+    });
   } catch (error) {
-    console.error('Registration error:', error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return res.status(409).json({ error: 'Email or phone is already in use' });
+    console.error(
+      'Registration error:',
+      error
+    );
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      return res.status(409).json({
+        error: 'Email or phone is already in use',
+      });
     }
-    res.status(500).json({ error: 'Registration failed' });
+
+    res.status(500).json({
+      error: 'Registration failed',
+    });
   }
 });
 
-// OTP verification
+/* =========================================================
+   OTP VERIFICATION
+   ========================================================= */
+
 router.post('/verify-otp', async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const {
+      email,
+      otp,
+    } = req.body;
 
     if (!email || !otp) {
-      return res.status(400).json({ error: 'Email and OTP are required' });
+      return res.status(400).json({
+        error: 'Email and OTP are required',
+      });
     }
 
     const otpEntry = otpStore.get(email);
+
     if (!otpEntry) {
-      return res.status(400).json({ error: 'OTP not found or expired' });
+      return res.status(400).json({
+        error: 'OTP not found or expired',
+      });
     }
 
     if (otpEntry.expiresAt < new Date()) {
       otpStore.delete(email);
-      return res.status(400).json({ error: 'OTP has expired. Please request a new code.' });
+
+      return res.status(400).json({
+        error:
+          'OTP has expired. Please request a new code.',
+      });
     }
 
     if (otpEntry.otpCode !== otp) {
-      return res.status(400).json({ error: 'Invalid OTP' });
+      return res.status(400).json({
+        error: 'Invalid OTP',
+      });
     }
 
     await prisma.user.update({
-      where: { email },
-      data: { isVerified: true },
+      where: {
+        email,
+      },
+      data: {
+        isVerified: true,
+      },
     });
 
     otpStore.delete(email);
 
-    res.json({ message: 'Email verified successfully' });
+    res.json({
+      message: 'Email verified successfully',
+    });
   } catch (error) {
-    console.error('Verify OTP error:', error);
-    res.status(500).json({ error: 'OTP verification failed' });
+    console.error(
+      'Verify OTP error:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'OTP verification failed',
+    });
   }
 });
 
-// Resend OTP
+/* =========================================================
+   RESEND OTP
+   ========================================================= */
+
 router.post('/resend-otp', async (req, res) => {
   try {
-    const { email } = req.body;
+    const {
+      email,
+    } = req.body;
 
     if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+      return res.status(400).json({
+        error: 'Email is required',
+      });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser =
+      await prisma.user.findUnique({
+        where: {
+          email,
+        },
+      });
+
     if (!existingUser) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({
+        error: 'User not found',
+      });
     }
 
     if (existingUser.isVerified) {
-      return res.status(400).json({ error: 'Email is already verified' });
+      return res.status(400).json({
+        error: 'Email is already verified',
+      });
     }
 
-    const existingOtp = otpStore.get(email);
+    const existingOtp =
+      otpStore.get(email);
+
     const now = new Date();
-    if (existingOtp && existingOtp.resendAvailableAt > now) {
-      const secondsLeft = Math.ceil((existingOtp.resendAvailableAt.getTime() - now.getTime()) / 1000);
-      return res.status(429).json({ error: `Please wait ${secondsLeft} seconds before requesting a new OTP.` });
+
+    if (
+      existingOtp &&
+      existingOtp.resendAvailableAt > now
+    ) {
+      const secondsLeft = Math.ceil(
+        (
+          existingOtp.resendAvailableAt.getTime() -
+          now.getTime()
+        ) / 1000
+      );
+
+      return res.status(429).json({
+        error: `Please wait ${secondsLeft} seconds before requesting a new OTP.`,
+      });
     }
 
-    await queueOtpForEmail(email, existingUser.id);
-    res.json({ message: 'OTP resent to your email' });
+    await queueOtpForEmail(
+      email,
+      existingUser.id
+    );
+
+    res.json({
+      message: 'OTP resent to your email',
+    });
   } catch (error) {
-    console.error('Resend OTP error:', error);
-    res.status(500).json({ error: 'Unable to resend OTP' });
+    console.error(
+      'Resend OTP error:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Unable to resend OTP',
+    });
   }
 });
 
+/* =========================================================
+   FORGOT PASSWORD
+   ========================================================= */
+
 router.post('/forgot-password', async (req, res) => {
   try {
-    const { email } = req.body;
+    const {
+      email,
+    } = req.body;
 
     if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+      return res.status(400).json({
+        error: 'Email is required',
+      });
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    const normalizedEmail =
+      String(email)
+        .trim()
+        .toLowerCase();
+
+    const user =
+      await prisma.user.findUnique({
+        where: {
+          email: normalizedEmail,
+        },
+      });
 
     if (!user) {
-      return res.status(200).json({ message: 'If an account exists, a reset link has been sent.' });
+      return res.status(200).json({
+        message:
+          'If an account exists, a reset link has been sent.',
+      });
     }
 
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const token =
+      crypto.randomBytes(32).toString('hex');
+
+    const expiresAt =
+      new Date(
+        Date.now() + 15 * 60 * 1000
+      );
 
     passwordResetStore.set(token, {
       token,
@@ -342,178 +600,452 @@ router.post('/forgot-password', async (req, res) => {
       expiresAt,
     });
 
-    const resetLink = `${FRONTEND_URL}/#/reset-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
-    const sent = await sendPasswordResetEmail(normalizedEmail, resetLink);
+    const resetLink =
+      `${FRONTEND_URL}/#/reset-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+
+    const sent =
+      await sendPasswordResetEmail(
+        normalizedEmail,
+        resetLink
+      );
 
     if (!sent) {
-      return res.status(500).json({ error: 'Unable to send reset link right now' });
+      return res.status(500).json({
+        error:
+          'Unable to send reset link right now',
+      });
     }
 
-    res.json({ message: 'Reset link sent to your email' });
+    res.json({
+      message:
+        'Reset link sent to your email',
+    });
   } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ error: 'Unable to process password reset request' });
+    console.error(
+      'Forgot password error:',
+      error
+    );
+
+    res.status(500).json({
+      error:
+        'Unable to process password reset request',
+    });
   }
 });
+
+/* =========================================================
+   RESET PASSWORD
+   ========================================================= */
 
 router.post('/reset-password', async (req, res) => {
   try {
-    const { email, token, password } = req.body;
+    const {
+      email,
+      token,
+      password,
+    } = req.body;
 
     if (!email || !token || !password) {
-      return res.status(400).json({ error: 'Email, token, and new password are required' });
+      return res.status(400).json({
+        error:
+          'Email, token, and new password are required',
+      });
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const resetEntry = passwordResetStore.get(token);
+    const normalizedEmail =
+      String(email)
+        .trim()
+        .toLowerCase();
 
-    if (!resetEntry || resetEntry.email !== normalizedEmail || resetEntry.expiresAt < new Date()) {
-      return res.status(400).json({ error: 'Invalid or expired reset link' });
+    const resetEntry =
+      passwordResetStore.get(token);
+
+    if (
+      !resetEntry ||
+      resetEntry.email !== normalizedEmail ||
+      resetEntry.expiresAt < new Date()
+    ) {
+      return res.status(400).json({
+        error:
+          'Invalid or expired reset link',
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword =
+      await bcrypt.hash(
+        password,
+        10
+      );
+
     await prisma.user.update({
-      where: { id: resetEntry.userId },
-      data: { password: hashedPassword },
+      where: {
+        id: resetEntry.userId,
+      },
+      data: {
+        password: hashedPassword,
+      },
     });
 
     passwordResetStore.delete(token);
-    res.json({ message: 'Password reset successfully' });
+
+    res.json({
+      message:
+        'Password reset successfully',
+    });
   } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(500).json({ error: 'Unable to reset password' });
+    console.error(
+      'Reset password error:',
+      error
+    );
+
+    res.status(500).json({
+      error:
+        'Unable to reset password',
+    });
   }
 });
 
-// Google social login start
-router.get('/google', (req, res, next) => {
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    return res.status(500).json({ error: 'Google login is not configured on the server' })
-  }
-  next()
-}, passport.authenticate('google', { scope: ['profile', 'email'] }))
+/* =========================================================
+   GOOGLE SOCIAL LOGIN
+   ========================================================= */
 
-router.get('/google/callback', (req, res, next) => {
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    return res.redirect(`${FRONTEND_URL}/login?error=google_not_configured`)
-  }
-  next()
-}, passport.authenticate('google', { session: false, failureRedirect: `${FRONTEND_URL}/login?error=google_failed` }), (req, res) => {
-  const user = req.user as any
-  if (!user?.id) {
-    return res.redirect(`${FRONTEND_URL}/login?error=google_failed`)
-  }
+router.get(
+  '/google',
+  (req, res, next) => {
+    if (
+      !GOOGLE_CLIENT_ID ||
+      !GOOGLE_CLIENT_SECRET
+    ) {
+      return res.status(500).json({
+        error:
+          'Google login is not configured on the server',
+      });
+    }
 
-  const token = jwt.sign(
-    { userId: user.id, role: user.role },
-    process.env.JWT_SECRET || 'secret',
-    { expiresIn: '1d' }
+    next();
+  },
+  passport.authenticate(
+    'google',
+    {
+      scope: [
+        'profile',
+        'email',
+      ],
+    }
   )
+);
 
-  res.redirect(`${FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`)
-})
+router.get(
+  '/google/callback',
+  (req, res, next) => {
+    if (
+      !GOOGLE_CLIENT_ID ||
+      !GOOGLE_CLIENT_SECRET
+    ) {
+      return res.redirect(
+        `${FRONTEND_URL}/login?error=google_not_configured`
+      );
+    }
 
-// Facebook social login start
-router.get('/facebook', (req, res, next) => {
-  if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
-    return res.status(500).json({ error: 'Facebook login is not configured on the server' })
+    next();
+  },
+  passport.authenticate(
+    'google',
+    {
+      session: false,
+      failureRedirect:
+        `${FRONTEND_URL}/login?error=google_failed`,
+    }
+  ),
+  (req, res) => {
+    const user =
+      req.user as any;
+
+    if (!user?.id) {
+      return res.redirect(
+        `${FRONTEND_URL}/login?error=google_failed`
+      );
+    }
+
+    const token =
+      jwt.sign(
+        {
+          userId: user.id,
+          role: user.role,
+        },
+        process.env.JWT_SECRET || 'secret',
+        {
+          expiresIn: '1d',
+        }
+      );
+
+    res.redirect(
+      `${FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`
+    );
   }
-  next()
-}, passport.authenticate('facebook', { scope: ['email'] }))
+);
 
-router.get('/facebook/callback', (req, res, next) => {
-  if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
-    return res.redirect(`${FRONTEND_URL}/login?error=facebook_not_configured`)
-  }
-  next()
-}, passport.authenticate('facebook', { session: false, failureRedirect: `${FRONTEND_URL}/login?error=facebook_failed` }), (req, res) => {
-  const user = req.user as any
-  if (!user?.id) {
-    return res.redirect(`${FRONTEND_URL}/login?error=facebook_failed`)
-  }
+/* =========================================================
+   FACEBOOK SOCIAL LOGIN
+   ========================================================= */
 
-  const token = jwt.sign(
-    { userId: user.id, role: user.role },
-    process.env.JWT_SECRET || 'secret',
-    { expiresIn: '1d' }
+router.get(
+  '/facebook',
+  (req, res, next) => {
+    if (
+      !FACEBOOK_APP_ID ||
+      !FACEBOOK_APP_SECRET
+    ) {
+      return res.status(500).json({
+        error:
+          'Facebook login is not configured on the server',
+      });
+    }
+
+    next();
+  },
+  passport.authenticate(
+    'facebook',
+    {
+      scope: [
+        'email',
+      ],
+    }
   )
+);
 
-  res.redirect(`${FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`)
-})
+router.get(
+  '/facebook/callback',
+  (req, res, next) => {
+    if (
+      !FACEBOOK_APP_ID ||
+      !FACEBOOK_APP_SECRET
+    ) {
+      return res.redirect(
+        `${FRONTEND_URL}/login?error=facebook_not_configured`
+      );
+    }
 
-// Test login
+    next();
+  },
+  passport.authenticate(
+    'facebook',
+    {
+      session: false,
+      failureRedirect:
+        `${FRONTEND_URL}/login?error=facebook_failed`,
+    }
+  ),
+  (req, res) => {
+    const user =
+      req.user as any;
+
+    if (!user?.id) {
+      return res.redirect(
+        `${FRONTEND_URL}/login?error=facebook_failed`
+      );
+    }
+
+    const token =
+      jwt.sign(
+        {
+          userId: user.id,
+          role: user.role,
+        },
+        process.env.JWT_SECRET || 'secret',
+        {
+          expiresIn: '1d',
+        }
+      );
+
+    res.redirect(
+      `${FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`
+    );
+  }
+);
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    
-    const user = await prisma.user.findUnique({ where: { email } });
+    const {
+      email,
+      password,
+    } = req.body;
+
+    const user =
+      await prisma.user.findUnique({
+        where: {
+          email,
+        },
+      });
+
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({
+        error: 'Invalid credentials',
+      });
     }
-    
-    const isValid = await bcrypt.compare(password, user.password);
+
+    const isValid =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
+
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({
+        error: 'Invalid credentials',
+      });
     }
-    
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: '1d' }
-    );
-    
+
+    const token =
+      jwt.sign(
+        {
+          userId: user.id,
+          role: user.role,
+        },
+        process.env.JWT_SECRET || 'secret',
+        {
+          expiresIn: '1d',
+        }
+      );
+
     // Return accessToken for frontend compatibility
-    res.json({ accessToken: token, user: { id: user.id, name: user.name, email: user.email } });
+    res.json({
+      accessToken: token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    console.error(
+      'Login error:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Login failed',
+    });
   }
 });
 
-// Logout (stateless token-based APIs can still accept logout for client convenience)
+/* =========================================================
+   LOGOUT
+   ========================================================= */
+
 router.post('/logout', async (req, res) => {
   try {
-    // If using server-side session store, clear it here. For JWT stateless tokens,
-    // client should remove the token. We still return success so frontend can call.
-    res.json({ message: 'Logged out' });
-  } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({ error: 'Logout failed' });
-  }
-});
+    // If using server-side session store,
+    // clear it here.
+    //
+    // For JWT stateless APIs,
+    // client should remove the token.
+    //
+    // We still return success so frontend can call.
 
-// Protected route to get current authenticated user's info
-router.get('/me', authenticate, async (req, res) => {
-  try {
-    const userId = (req as any).user?.userId;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, name: true, email: true, phone: true, role: true, isVerified: true, profilePhoto: true },
+    res.json({
+      message: 'Logged out',
     });
-
-    res.json(user);
   } catch (error) {
-    console.error('Auth me error:', error);
-    res.status(500).json({ error: 'Failed to get authenticated user' });
+    console.error(
+      'Logout error:',
+      error
+    );
+
+    res.status(500).json({
+      error: 'Logout failed',
+    });
   }
 });
 
-// Development endpoint to retrieve OTP for testing
-router.get('/dev/otp/:email', (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({ error: 'Not available in production' });
+/* =========================================================
+   CURRENT USER
+   ========================================================= */
+
+router.get(
+  '/me',
+  authenticate,
+  async (req, res) => {
+    try {
+      const userId =
+        (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({
+          error: 'Unauthorized',
+        });
+      }
+
+      const user =
+        await prisma.user.findUnique({
+          where: {
+            id: userId,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
+            isVerified: true,
+            profilePhoto: true,
+          },
+        });
+
+      res.json(user);
+    } catch (error) {
+      console.error(
+        'Auth me error:',
+        error
+      );
+
+      res.status(500).json({
+        error:
+          'Failed to get authenticated user',
+      });
+    }
   }
-  
-  const { email } = req.params;
-  const otpEntry = otpStore.get(email);
-  
-  if (!otpEntry) {
-    return res.status(404).json({ error: 'No OTP found for this email' });
+);
+
+/* =========================================================
+   DEVELOPMENT OTP ENDPOINT
+   ========================================================= */
+
+router.get(
+  '/dev/otp/:email',
+  (req, res) => {
+    if (
+      process.env.NODE_ENV === 'production'
+    ) {
+      return res.status(403).json({
+        error:
+          'Not available in production',
+      });
+    }
+
+    const {
+      email,
+    } = req.params;
+
+    const otpEntry =
+      otpStore.get(email);
+
+    if (!otpEntry) {
+      return res.status(404).json({
+        error:
+          'No OTP found for this email',
+      });
+    }
+
+    res.json({
+      otp: otpEntry.otpCode,
+      expiresAt: otpEntry.expiresAt,
+    });
   }
-  
-  res.json({ otp: otpEntry.otpCode, expiresAt: otpEntry.expiresAt });
-});
+);
 
 export default router;
