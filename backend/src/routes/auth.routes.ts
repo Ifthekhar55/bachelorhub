@@ -171,6 +171,7 @@ if (smtpHost && smtpPort && smtpUser && smtpPass) {
 
     // Gmail SMTP SSL port
     port: 465,
+    family: 4,
 
     // SSL/TLS enabled
     secure: true,
