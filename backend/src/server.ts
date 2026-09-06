@@ -55,7 +55,7 @@ const allowedOrigins = new Set<string>([
   'http://127.0.0.1:5173',
   'http://localhost:5003',
   'http://127.0.0.1:5003',
-  'https://bachelorhub-production.up.railway.app',
+  'https://bachelorhub.onrender.com',
   'capacitor://localhost',
 ].filter(Boolean) as string[])
 
@@ -63,7 +63,7 @@ const isOriginAllowed = (origin?: string) => {
   if (!origin) return true
   if (allowedOrigins.has(origin)) return true
   if (origin.startsWith('file://')) return true
-  if (/^https:\/\/.*\.up\.railway\.app$/i.test(origin)) return true
+  if (/^https:\/\/.*\.onrender\.com$/i.test(origin)) return true
   if (/^https:\/\/.*\.vercel\.app$/i.test(origin)) return true
   if (/^http:\/\/localhost(:\d+)?$/i.test(origin)) return true
   if (/^http:\/\/127\.0\.0\.1(:\d+)?$/i.test(origin)) return true

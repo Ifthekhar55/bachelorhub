@@ -168,18 +168,9 @@ let transporter: nodemailer.Transporter | null = null;
 if (smtpHost && smtpPort && smtpUser && smtpPass) {
   transporter = nodemailer.createTransport({
     host: smtpHost,
-
-    // Gmail SMTP SSL port
-    port: 465,
-    family: 4,
-
-    // SSL/TLS enabled
-    secure: true,
-
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: { user: smtpUser, pass: smtpPass },
   });
 
   console.log('📧 SMTP transporter configured');
