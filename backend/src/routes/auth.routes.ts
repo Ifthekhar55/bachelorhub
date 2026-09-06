@@ -29,6 +29,10 @@ const BACKEND_URL =
 const FRONTEND_URL =
   process.env.FRONTEND_URL || 'http://localhost:3000';
 
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const RESEND_FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL || 'BachelorHub <onboarding@resend.dev>';
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || '';
@@ -238,54 +242,37 @@ const sendPasswordResetEmail = async (
 
 This link expires in 15 minutes.`;
 
-  if (transporter) {
-    await transporter.sendMail({
-      from: smtpUser || 'no-reply@example.com',
-      to: email,
-      subject,
-      text,
-    });
-
-    return true;
-  }
-
   try {
-    const testAccount = await nodemailer.createTestAccount();
+    if (!RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY is not configured');
+    }
 
-    transporter = nodemailer.createTransport({
-      host: testAccount.smtp.host,
-      port: testAccount.smtp.port,
-      secure: testAccount.smtp.secure,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        from: RESEND_FROM_EMAIL,
+        to: [email],
+        subject,
+        text,
+        html: `<p>Use the following link to reset your BachelorHub password:</p><p><a href="${resetLink}">Reset your password</a></p><p>This link expires in 15 minutes.</p>`,
+      }),
     });
 
-    const info = await transporter.sendMail({
-      from: 'no-reply@bachelorhub.local',
-      to: email,
-      subject,
-      text,
-    });
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Resend API returned ${response.status}: ${details}`);
+    }
 
-    console.log(
-      'Password reset email sent via Ethereal test account'
-    );
-
-    console.log(
-      nodemailer.getTestMessageUrl(info)
-    );
-
+    console.log(`Password reset email sent via Resend to ${email}`);
     return true;
   } catch (error) {
     console.error(
-      'Failed to send password reset email:',
+      'Failed to send password reset email via Resend:',
       error
-    );
-
-    console.log(
-      `Password reset link for ${email}: ${resetLink}`
     );
 
     return false;
