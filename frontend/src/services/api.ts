@@ -2,10 +2,17 @@
 import axios from 'axios';
 
 const defaultBaseURL = '/api';
-const productionBaseURL = 'https://bachelorhub-production.up.railway.app/api';
-const baseURL = import.meta.env.VITE_API_URL || (window.location.hostname.includes('railway') ? productionBaseURL : defaultBaseURL);
+const productionBaseURL = 'https://bachelorhub.onrender.com/api';
+const configuredBaseURL = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
+const baseURL = configuredBaseURL
+  ? configuredBaseURL.endsWith('/api')
+    ? configuredBaseURL
+    : `${configuredBaseURL}/api`
+  : window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? defaultBaseURL
+    : productionBaseURL;
 
-if (!import.meta.env.VITE_API_URL) {
+if (!configuredBaseURL) {
   console.warn('Using API base URL:', baseURL)
 }
 
