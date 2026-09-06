@@ -564,6 +564,12 @@ router.post('/forgot-password', async (req, res) => {
       });
     }
 
+    if (!RESEND_API_KEY) {
+      return res.status(503).json({
+        error: 'Password reset email service is not configured',
+      });
+    }
+
     const token =
       crypto.randomBytes(32).toString('hex');
 
@@ -589,6 +595,7 @@ router.post('/forgot-password', async (req, res) => {
       );
 
     if (!sent) {
+      passwordResetStore.delete(token);
       return res.status(500).json({
         error:
           'Unable to send reset link right now',
