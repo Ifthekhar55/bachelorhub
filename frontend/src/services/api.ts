@@ -1,13 +1,15 @@
 // src/services/api.ts
 import axios from 'axios';
 
-const defaultBaseURL = '/api';
-const productionBaseURL = 'https://bachelorhub.onrender.com/api';
-const configuredBaseURL = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
+const defaultBaseURL = '';
+const productionBaseURL = 'https://bachelorhub.onrender.com';
+const normalizeBaseURL = (url: string) =>
+  url.replace(/\/+$/, '').replace(/\/api$/, '');
+const configuredBaseURL = import.meta.env.VITE_API_URL
+  ? normalizeBaseURL(import.meta.env.VITE_API_URL)
+  : undefined;
 const baseURL = configuredBaseURL
-  ? configuredBaseURL.endsWith('/api')
-    ? configuredBaseURL
-    : `${configuredBaseURL}/api`
+  ? configuredBaseURL
   : window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? defaultBaseURL
     : productionBaseURL;
